@@ -73,7 +73,7 @@ func (ms *MemStorage) updateCounterHandler(w http.ResponseWriter, r *http.Reques
 	pathParts := strings.Split(path, "/")
 
 	if len(pathParts) != 5 {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Bad request", http.StatusNotFound)
 		return
 	}
 	// metricType := pathParts[2]
@@ -104,19 +104,13 @@ func (ms *MemStorage) updateGaugeHandler(w http.ResponseWriter, r *http.Request)
 	path := r.URL.Path
 	pathParts := strings.Split(path, "/")
 
-	fmt.Println(pathParts)
 	if len(pathParts) != 5 {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Bad request", http.StatusNotFound)
 		return
 	}
 	// metricType := pathParts[2]
 	metricName := pathParts[3]
 	metricValue := pathParts[4]
-
-	// if metricType != "counter" || metricType != "gauge" {
-	// 	http.Error(w, "invalid metric type", http.StatusBadRequest)
-	// 	return
-	// }
 
 	if metricName == "" {
 		http.Error(w, "metrick name not found ", http.StatusNotFound)
