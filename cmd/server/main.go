@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -11,40 +12,37 @@ import (
 var ErrNotFound = fmt.Errorf("value not found")
 
 type MemStorage struct {
-	counter map[string]int64
-	gauge   map[string]float64
+	data map[string]interface{}
 }
 
-// type MetricStorager interface {
-// 	SetMetric(key string, value interface{})
-// 	GetMetric(key string)
-// }
+type MetricStorager interface {
+	SetMetric(key string, value interface{})
+	GetMetric(key string)
+}
 
-func newMemStorage() *MemStorage {
+func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		counter: make(map[string]int64),
-		gauge:   make(map[string]float64),
+		data: make(map[string]interface{}),
 	}
 }
 
-func (ms *MemStorage) SetCounter(key string, value int64) {
-	ms.counter[key] += value
-}
+func (ms *MemStorage) SetMetric(key string, value interface{}) {
+	currentValue, exists := ms.data[key]
 
-func (ms *MemStorage) GetCounter(key string) (int64, error) {
-	v, ok := ms.counter[key]
-	if !ok {
-		return 0, ErrNotFound
+	switch value.(type) {
+	case float64:
+		ms.data[key] = value
+	case int64:
+		if exists {
+			if reflect.TypeOf(currentValue) == reflect.TypeOf(int64(0)) {
+				ms.data[key] = currentValue.(int64) + value.(int64)
+			}
+		}
 	}
-	return v, nil
 }
 
-func (ms *MemStorage) SetGauge(key string, value float64) {
-	ms.gauge[key] = value
-}
-
-func (ms *MemStorage) GetGauge(key string) (float64, error) {
-	v, ok := ms.gauge[key]
+func (ms *MemStorage) GetMetric(key string) (interface{}, error) {
+	v, ok := ms.data[key]
 	if !ok {
 		return 0, ErrNotFound
 	}
@@ -52,10 +50,10 @@ func (ms *MemStorage) GetGauge(key string) (float64, error) {
 }
 
 func main() {
-	ms := newMemStorage()
+	ms := NewMemStorage()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/update/counter/", ms.updateCounterHandler)
-	mux.HandleFunc("/update/gauge/", ms.updateGaugeHandler)
+	mux.HandleFunc("/update/", ms.updateHandler)
+	// mux.HandleFunc("/update/gauge/", ms.updateGaugeHandler)
 
 	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
@@ -63,7 +61,7 @@ func main() {
 	}
 }
 
-func (ms *MemStorage) updateCounterHandler(w http.ResponseWriter, r *http.Request) {
+func (ms *MemStorage) updateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not alowed", http.StatusMethodNotAllowed)
 		return
@@ -73,56 +71,70 @@ func (ms *MemStorage) updateCounterHandler(w http.ResponseWriter, r *http.Reques
 	pathParts := strings.Split(path, "/")
 
 	if len(pathParts) != 5 {
-		http.Error(w, "Bad request", http.StatusNotFound)
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	// metricType := pathParts[2]
+	metricType := pathParts[2]
 	metricName := pathParts[3]
 	metricValue := pathParts[4]
+	var Metric interface{}
+	if metricType == "counter" {
+		intVal, err := strconv.ParseInt(metricValue, 10, 64)
+		if err != nil {
+			http.Error(w, "metric value type should be integer", http.StatusBadRequest)
+			return
+		}
+		Metric = intVal
+	} else if metricType == "gauge" {
+		floatVal, err := strconv.ParseFloat(metricValue, 64)
+		if err != nil {
+			http.Error(w, "metric value type should be float", http.StatusBadRequest)
+			return
+		}
+		Metric = floatVal
+	} else {
+		// if metricType != "counter" && metricType != "gauge" {
+		http.Error(w, "invalid metric type", http.StatusBadRequest)
+		return
+	}
 
 	if metricName == "" {
-		http.Error(w, "metrick name not found ", http.StatusNotFound)
+		http.Error(w, "metric name not found ", http.StatusNotFound)
 		return
 	}
 
-	intMetric, err := strconv.ParseInt(metricValue, 10, 64)
-	if err != nil {
-		http.Error(w, "metric value type should be integer", http.StatusBadRequest)
-		return
-	}
-
-	ms.SetCounter(metricName, intMetric)
+	ms.SetMetric(metricName, Metric)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (ms *MemStorage) updateGaugeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not alowed", http.StatusMethodNotAllowed)
-		return
-	}
+// func (ms *MemStorage) updateGaugeHandler(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "method not alowed", http.StatusMethodNotAllowed)
+// 		return
+// 	}
 
-	path := r.URL.Path
-	pathParts := strings.Split(path, "/")
+// 	path := r.URL.Path
+// 	pathParts := strings.Split(path, "/")
 
-	if len(pathParts) != 5 {
-		http.Error(w, "Bad request", http.StatusNotFound)
-		return
-	}
-	// metricType := pathParts[2]
-	metricName := pathParts[3]
-	metricValue := pathParts[4]
+// 	if len(pathParts) != 5 {
+// 		http.Error(w, "not found", http.StatusNotFound)
+// 		return
+// 	}
+// 	// metricType := pathParts[2]
+// 	metricName := pathParts[3]
+// 	metricValue := pathParts[4]
 
-	if metricName == "" {
-		http.Error(w, "metrick name not found ", http.StatusNotFound)
-		return
-	}
+// 	if metricName == "" {
+// 		http.Error(w, "metrick name not found ", http.StatusNotFound)
+// 		return
+// 	}
 
-	floatMetric, err := strconv.ParseFloat(metricValue, 64)
-	if err != nil {
-		http.Error(w, "metric value type should be float", http.StatusBadRequest)
-		return
-	}
+// 	floatMetric, err := strconv.ParseFloat(metricValue, 64)
+// 	if err != nil {
+// 		http.Error(w, "metric value type should be float", http.StatusBadRequest)
+// 		return
+// 	}
 
-	ms.SetGauge(metricName, floatMetric)
-	w.WriteHeader(http.StatusOK)
-}
+// 	ms.SetGauge(metricName, floatMetric)
+// 	w.WriteHeader(http.StatusOK)
+// }
