@@ -38,6 +38,7 @@ func TestHandler_UpdateHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := testRequest(t, ts, tt.method, tt.endpoint)
+			resp.Body.Close()
 			assert.Equal(t, tt.expectedCode, resp.StatusCode)
 		})
 	}
