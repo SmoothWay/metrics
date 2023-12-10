@@ -19,17 +19,17 @@ type ConfigBuilder struct {
 	config Config
 }
 
-func (b ConfigBuilder) WithHost(host string) ConfigBuilder {
+func (b *ConfigBuilder) WithHost(host string) *ConfigBuilder {
 	b.config.Host = host
 	return b
 }
 
-func (b ConfigBuilder) WithPort(port string) ConfigBuilder {
+func (b *ConfigBuilder) WithPort(port string) *ConfigBuilder {
 	b.config.Port = port
 	return b
 }
 
-func (b ConfigBuilder) WithDebug(debug bool) ConfigBuilder {
+func (b *ConfigBuilder) WithDebug(debug bool) *ConfigBuilder {
 	b.config.Debug = debug
 	return b
 }
@@ -46,7 +46,6 @@ func NewConfigFromFlags() *Config {
 	flag.Parse()
 
 	var builder ConfigBuilder
-
 	builder.WithHost(host).
 		WithPort(port).
 		WithDebug(debug)
