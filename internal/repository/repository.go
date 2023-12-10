@@ -60,3 +60,7 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	}
 	return v.(float64), nil
 }
+
+func (ms *MemStorage) GetAllMetric() map[string]interface{} {
+	return ms.data
+}

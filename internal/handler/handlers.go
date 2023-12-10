@@ -2,10 +2,12 @@ package handler
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
-	"strings"
 
 	"github.com/SmoothWay/metrics/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
@@ -20,38 +22,51 @@ func NewHandler(s *service.Service) *Handler {
 }
 
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not alowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	path := r.URL.Path
-	pathParts := strings.Split(path, "/")
-
-	if len(pathParts) != 5 {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	metricType := pathParts[2]
-	metricName := pathParts[3]
-	metricValue := pathParts[4]
-	// log.Printf("Type: %s, Name: %s, Value: %s", metricType, metricName, metricValue)
-	if metricName == "" {
-		http.Error(w, "metric name not found ", http.StatusNotFound)
-		return
-	}
+	metricType := chi.URLParam(r, "metricType")
+	metricName := chi.URLParam(r, "metricName")
+	metricValue := chi.URLParam(r, "metricValue")
+	// if metricName == "" {
+	// 	http.Error(w, "metric name not found ", http.StatusNotFound)
+	// 	return
+	// }
 	if err := h.s.Save(metricType, metricName, metricValue); err != nil {
 		if errors.Is(err, service.ErrInavlidMetricType) {
-			// log.Printf("Type:%s, Name: %s, Value:%s; gets error: %q", metricType, metricName, metricValue, service.ErrInavlidMetricType)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if errors.Is(err, service.ErrInvalidMetricValue) {
-			// log.Printf("Type:%s, Name: %s, Value:%s; gets error: %q", metricType, metricName, metricValue, service.ErrInvalidMetricValue)
-
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 	w.Header().Add("Content-Type", "text-plain")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
+	metricType := chi.URLParam(r, "metricType")
+	metricName := chi.URLParam(r, "metricName")
+	var result string
+	valueType, value, err := h.s.Retrieve(metricType, metricName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if valueType == service.TypeGauge {
+		result = fmt.Sprintf("%g", value)
+	} else if valueType == service.TypeCounter {
+		result = fmt.Sprintf("%d", value)
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	io.WriteString(w, result)
+}
+
+func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
+	var result string
+	metrics := h.s.GetAll()
+
+	for _, v := range metrics {
+		result += fmt.Sprintf("%s: %s\n", v.Name, v.Value)
+	}
+	w.Header().Set("Content-Type", "text/html")
+	io.WriteString(w, result)
 }
