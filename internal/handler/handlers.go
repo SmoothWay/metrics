@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/SmoothWay/metrics/internal/service"
@@ -20,11 +21,20 @@ func NewHandler(s *service.Service) *Handler {
 		s: s,
 	}
 }
+func Router(h *Handler) chi.Router {
+	r := chi.NewMux()
+	r.Get("/", h.GetAllHanler)
+	r.Get("/value/{metricType}/{metricName}", h.GetHandler)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
+
+	return r
+}
 
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
+	log.Println(metricType)
 	// if metricName == "" {
 	// 	http.Error(w, "metric name not found ", http.StatusNotFound)
 	// 	return

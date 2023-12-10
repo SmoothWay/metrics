@@ -5,18 +5,13 @@ import (
 	"net/http"
 
 	"github.com/SmoothWay/metrics/internal/config"
-	"github.com/go-chi/chi/v5"
+	"github.com/SmoothWay/metrics/internal/handler"
 )
 
 func main() {
 	cfg := config.NewConfigFromFlags()
-	// mux := http.NewServeMux()
-	r := chi.NewMux()
-	r.Get("/", cfg.H.GetAllHanler)
-	r.Get("/value/{metricType}/{metricName}", cfg.H.GetHandler)
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", cfg.H.UpdateHandler)
 
-	err := http.ListenAndServe(cfg.Host+`:`+cfg.Port, r)
+	err := http.ListenAndServe(cfg.Host+`:`+cfg.Port, handler.Router(cfg.H))
 	if err != nil {
 		log.Panic(err)
 	}
