@@ -12,6 +12,6 @@ func parseFlags() {
 	// flag.IntVar(&pollInterval, "pollInterval", , usage string)
 	flag.IntVar(&reportInterval, "r", 10, "report interval")
 	flag.IntVar(&pollInterval, "p", 2, "polling interval")
-	flag.StringVar(&url, "a", "http://localhost:8080", "server address")
+	flag.StringVar(&url, "a", "localhost:8080", "server address")
 	flag.Parse()
 }
