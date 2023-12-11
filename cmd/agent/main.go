@@ -12,19 +12,17 @@ import (
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
-var (
-	pollInterval   = 2 * time.Second
-	reportInterval = 10 * time.Second
-	url            = "http://localhost:8080/update"
-	counter        int64
-)
+var counter int64
 
 func main() {
+	parseFlags()
+
 	var metrics []model.Metric
+
 	go func() {
 		for {
 			metrics = updateMetrics()
-			time.Sleep(pollInterval)
+			time.Sleep(time.Duration(pollInterval) * time.Second)
 		}
 	}()
 	for {
@@ -32,15 +30,17 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		time.Sleep(reportInterval)
+		time.Sleep(time.Duration(reportInterval) * time.Second)
 	}
 }
 
 func reportMetrics(metrics []model.Metric) error {
 
 	for _, m := range metrics {
-		client := &http.Client{}
-		endpoint := fmt.Sprintf("%s/%s/%s/%v", url, m.Type, m.Name, m.Value)
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+		endpoint := fmt.Sprintf("http://%s/%s/%s/%v", url, m.Type, m.Name, m.Value)
 		req, err := http.NewRequest(http.MethodPost, endpoint, nil)
 		if err != nil {
 			return err
@@ -51,7 +51,6 @@ func reportMetrics(metrics []model.Metric) error {
 			return err
 		}
 		res.Body.Close()
-		// log.Printf("Metric: %s, Status: %s\n", m.Name, res.Status)
 	}
 	return nil
 }

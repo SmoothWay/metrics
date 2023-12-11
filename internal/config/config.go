@@ -9,10 +9,8 @@ import (
 )
 
 type Config struct {
-	Host  string
-	Port  string
-	Debug bool
-	H     *handler.Handler
+	Host string
+	H    *handler.Handler
 }
 
 type ConfigBuilder struct {
@@ -24,31 +22,15 @@ func (b *ConfigBuilder) WithHost(host string) *ConfigBuilder {
 	return b
 }
 
-func (b *ConfigBuilder) WithPort(port string) *ConfigBuilder {
-	b.config.Port = port
-	return b
-}
-
-func (b *ConfigBuilder) WithDebug(debug bool) *ConfigBuilder {
-	b.config.Debug = debug
-	return b
-}
-
 func NewConfigFromFlags() *Config {
 	var host string
-	var port string
-	var debug bool
 
-	flag.StringVar(&host, "host", "", "server host")
-	flag.StringVar(&port, "port", "8080", "server port")
-	flag.BoolVar(&debug, "debug", false, "enable debugging")
+	flag.StringVar(&host, "a", "localhost:8080", "server host")
 
 	flag.Parse()
 
 	var builder ConfigBuilder
-	builder.WithHost(host).
-		WithPort(port).
-		WithDebug(debug)
+	builder.WithHost(host)
 
 	repo := repository.New()
 	serv := service.New(repo)

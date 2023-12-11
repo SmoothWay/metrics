@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/SmoothWay/metrics/internal/service"
@@ -34,7 +33,6 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metricType")
 	metricName := chi.URLParam(r, "metricName")
 	metricValue := chi.URLParam(r, "metricValue")
-	log.Println(metricType)
 	// if metricName == "" {
 	// 	http.Error(w, "metric name not found ", http.StatusNotFound)
 	// 	return

@@ -10,8 +10,8 @@ import (
 
 func main() {
 	cfg := config.NewConfigFromFlags()
-
-	err := http.ListenAndServe(cfg.Host+`:`+cfg.Port, handler.Router(cfg.H))
+	log.Println("Starting server on:", cfg.Host)
+	err := http.ListenAndServe(cfg.Host, handler.Router(cfg.H))
 	if err != nil {
 		log.Panic(err)
 	}
