@@ -39,6 +39,7 @@ func Test_updateMetrics(t *testing.T) {
 }
 
 func Test_reportMetrics(t *testing.T) {
+	host := "localhost:8080"
 	type args struct {
 		metrics []model.Metric
 	}
@@ -51,7 +52,7 @@ func Test_reportMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reportMetrics(tt.args.metrics); (err != nil) != tt.wantErr {
+			if err := reportMetrics(host, tt.args.metrics); (err != nil) != tt.wantErr {
 				t.Errorf("reportMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

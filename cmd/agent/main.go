@@ -9,38 +9,39 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/SmoothWay/metrics/internal/config"
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
 var counter int64
 
 func main() {
-	parseFlags()
 
+	config := config.NewAgentConfig()
 	var metrics []model.Metric
 
 	go func() {
 		for {
 			metrics = updateMetrics()
-			time.Sleep(time.Duration(pollInterval) * time.Second)
+			time.Sleep(time.Duration(config.PollInterval) * time.Second)
 		}
 	}()
 	for {
-		err := reportMetrics(metrics)
+		err := reportMetrics(config.Host, metrics)
 		if err != nil {
 			log.Fatal(err)
 		}
-		time.Sleep(time.Duration(reportInterval) * time.Second)
+		time.Sleep(time.Duration(config.ReportInterval) * time.Second)
 	}
 }
 
-func reportMetrics(metrics []model.Metric) error {
+func reportMetrics(host string, metrics []model.Metric) error {
 
 	for _, m := range metrics {
 		client := &http.Client{
 			Timeout: 10 * time.Second,
 		}
-		endpoint := fmt.Sprintf("http://%s/%s/%s/%v", url, m.Type, m.Name, m.Value)
+		endpoint := fmt.Sprintf("http://%s/%s/%s/%v", host, m.Type, m.Name, m.Value)
 		req, err := http.NewRequest(http.MethodPost, endpoint, nil)
 		if err != nil {
 			return err
