@@ -16,16 +16,20 @@ type AgentConfig struct {
 }
 
 type ServerConfig struct {
-	Host string `env:"ADDRESS"`
-	H    *handler.Handler
+	Host     string `env:"ADDRESS"`
+	LogLevel string `env:"LOG_LEVEL"`
+	H        *handler.Handler
 }
 
 func NewServerConfig() *ServerConfig {
-	host := parseServerFlags()
+	host, loglevel := parseServerFlags()
 	config := &ServerConfig{}
 	env.Parse(config)
 	if config.Host == "" {
 		config.Host = host
+	}
+	if config.LogLevel == "" {
+		config.LogLevel = loglevel
 	}
 	repo := repository.New()
 	serv := service.New(repo)
@@ -51,11 +55,11 @@ func NewAgentConfig() *AgentConfig {
 	return config
 }
 
-func parseServerFlags() string {
+func parseServerFlags() (string, string) {
 	host := flag.String("a", "localhost:8080", "server host")
-
+	log := flag.String("l", "info", "log level")
 	flag.Parse()
-	return *host
+	return *host, *log
 }
 
 func parseAgentFlags() (string, int, int) {
