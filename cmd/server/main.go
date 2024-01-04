@@ -7,6 +7,7 @@ import (
 	"github.com/SmoothWay/metrics/internal/config"
 	"github.com/SmoothWay/metrics/internal/handler"
 	"github.com/SmoothWay/metrics/internal/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.Log.Info("testof zlog")
+	logger.Log.Info("Starting server on", zap.String("host", cfg.Host))
 	err = http.ListenAndServe(cfg.Host, handler.Router(cfg.H))
 	if err != nil {
 		logger.Log.Error(err.Error())

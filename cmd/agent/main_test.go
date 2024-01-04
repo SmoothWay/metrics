@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"testing"
 
+	"github.com/SmoothWay/metrics/internal/agent"
 	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,14 +20,14 @@ func Test_updateMetrics(t *testing.T) {
 		{name: "alloc", field: "Alloc", wantType: "gauge"},
 		{name: "counter", field: "PollCounter", wantType: "counter"},
 	}
-	metrics := updateMetrics()
+	metrics := agent.UpdateMetrics()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			found := false // Flag to track if tt.field is found in metrics
 			for _, metric := range metrics {
 
-				if metric.Name == tt.field {
-					assert.Equal(t, metric.Type, tt.wantType)
+				if metric.ID == tt.field {
+					assert.Equal(t, metric.Mtype, tt.wantType)
 					found = true
 					break
 				}
@@ -41,7 +43,7 @@ func Test_updateMetrics(t *testing.T) {
 func Test_reportMetrics(t *testing.T) {
 	host := "localhost:8080"
 	type args struct {
-		metrics []model.Metric
+		metrics []model.Metrics
 	}
 	tests := []struct {
 		name    string
@@ -50,9 +52,10 @@ func Test_reportMetrics(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
+	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reportMetrics(host, tt.args.metrics); (err != nil) != tt.wantErr {
+			if err := agent.ReportMetrics(ctx, host, tt.args.metrics); (err != nil) != tt.wantErr {
 				t.Errorf("reportMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"errors"
-	"reflect"
+	"sync"
 )
 
 var (
@@ -11,56 +11,69 @@ var (
 )
 
 type MemStorage struct {
-	data map[string]interface{}
+	gauge   map[string]float64
+	counter map[string]int64
+	mu      *sync.RWMutex
 }
 
 func New() *MemStorage {
 	return &MemStorage{
-		data: make(map[string]interface{}),
+		gauge:   make(map[string]float64),
+		counter: make(map[string]int64),
+		mu:      &sync.RWMutex{},
 	}
 }
 
 func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
-	currentValue, exists := ms.data[key]
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	currentValue, exists := ms.counter[key]
 
 	if exists {
-		if reflect.TypeOf(currentValue) == reflect.TypeOf(int64(0)) {
-			ms.data[key] = currentValue.(int64) + value
-			return nil
-		} else {
-			return ErrCannotAssign
-		}
+		ms.counter[key] = currentValue + value
+		return nil
 	}
-	ms.data[key] = value
+	ms.counter[key] = value
 	return nil
 }
 
 func (ms *MemStorage) SetGaugeMetric(key string, value float64) error {
-	currentValue := ms.data[key]
-	if reflect.TypeOf(currentValue) == reflect.TypeOf(int64(0)) {
-		return ErrCannotAssign
-	}
-
-	ms.data[key] = value
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	ms.gauge[key] = value
 	return nil
 }
 
 func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
-	v, ok := ms.data[key]
+	ms.mu.RLock()
+	v, ok := ms.counter[key]
+	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
 	}
-	return v.(int64), nil
+	return v, nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
-	v, ok := ms.data[key]
+	ms.mu.RLock()
+	v, ok := ms.gauge[key]
+	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
 	}
-	return v.(float64), nil
+	return v, nil
 }
 
 func (ms *MemStorage) GetAllMetric() map[string]interface{} {
-	return ms.data
+	ms.mu.RLock()
+	data := make(map[string]interface{}, len(ms.counter)+len(ms.gauge))
+	for k, v := range ms.gauge {
+		data[k] = v
+	}
+
+	for k, v := range ms.counter {
+		data[k] = v
+	}
+	ms.mu.RUnlock()
+	return data
 }

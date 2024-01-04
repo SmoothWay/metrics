@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/SmoothWay/metrics/internal/model"
 )
@@ -33,40 +32,32 @@ func New(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) Save(metricType string, key string, value string) error {
-	if metricType == TypeCounter {
-		intMetric, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return ErrInvalidMetricValue
-		}
-		return s.repo.SetCounterMetric(key, intMetric)
-
-	} else if metricType == TypeGauge {
-		floatMetric, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return ErrInvalidMetricValue
-		}
-		return s.repo.SetGaugeMetric(key, floatMetric)
+func (s *Service) Save(jsonMetric model.Metrics) error {
+	if jsonMetric.Delta != nil {
+		return s.repo.SetCounterMetric(jsonMetric.ID, *jsonMetric.Delta)
+	} else if jsonMetric.Value != nil {
+		return s.repo.SetGaugeMetric(jsonMetric.ID, *jsonMetric.Value)
 	}
 	return ErrInavlidMetricType
 }
 
-func (s *Service) Retrieve(metricType, metricName string) (string, interface{}, error) {
-	if metricType == TypeCounter {
-		value, err := s.repo.GetCounterMetric(metricName)
-		return metricType, value, err
-	} else if metricType == TypeGauge {
-		value, err := s.repo.GetGaugeMetric(metricName)
-		return metricType, value, err
+func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
+	if jsonMetric.Delta != nil {
+		value, err := s.repo.GetCounterMetric(jsonMetric.ID)
+		if err != nil {
+			return err
+		}
+		jsonMetric.Delta = &value
+	} else {
+		value, err := s.repo.GetGaugeMetric(jsonMetric.ID)
+		if err != nil {
+			return err
+		}
+		jsonMetric.Value = &value
 	}
-	return "", nil, ErrInavlidMetricType
+	return nil
 }
 
-func (s *Service) GetAll() []model.Metric {
-	var metrics []model.Metric
-	data := s.repo.GetAllMetric()
-	for name, value := range data {
-		metrics = append(metrics, model.Metric{Name: name, Value: value})
-	}
-	return metrics
+func (s *Service) GetAll() map[string]interface{} {
+	return s.repo.GetAllMetric()
 }
