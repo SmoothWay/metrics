@@ -3,10 +3,11 @@ package config
 import (
 	"flag"
 
+	"github.com/caarlos0/env/v6"
+
 	"github.com/SmoothWay/metrics/internal/handler"
 	"github.com/SmoothWay/metrics/internal/repository"
 	"github.com/SmoothWay/metrics/internal/service"
-	"github.com/caarlos0/env/v6"
 )
 
 type AgentConfig struct {
@@ -26,15 +27,18 @@ func NewServerConfig() *ServerConfig {
 	host, loglevel := parseServerFlags()
 	config := &ServerConfig{}
 	env.Parse(config)
+
 	if config.Host == "" {
 		config.Host = host
 	}
 	if config.LogLevel == "" {
 		config.LogLevel = loglevel
 	}
+
 	repo := repository.New()
 	serv := service.New(repo)
 	config.H = handler.NewHandler(serv)
+
 	return config
 }
 
@@ -56,13 +60,16 @@ func NewAgentConfig() *AgentConfig {
 	if config.LogLevel == "" {
 		config.LogLevel = logLevel
 	}
+
 	return config
 }
 
 func parseServerFlags() (string, string) {
 	host := flag.String("a", "localhost:8080", "server host")
 	log := flag.String("l", "info", "log level")
+
 	flag.Parse()
+
 	return *host, *log
 }
 

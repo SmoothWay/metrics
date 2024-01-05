@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/SmoothWay/metrics/internal/agent"
 	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_updateMetrics(t *testing.T) {

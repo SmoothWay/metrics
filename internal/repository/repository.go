@@ -27,10 +27,10 @@ func New() *MemStorage {
 func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	currentValue, exists := ms.counter[key]
+	_, exists := ms.counter[key]
 
 	if exists {
-		ms.counter[key] = currentValue + value
+		ms.counter[key] += value
 		return nil
 	}
 	ms.counter[key] = value

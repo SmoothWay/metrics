@@ -24,6 +24,7 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 	for _, m := range metrics {
 		m := m
 		wg.Add(1)
+
 		go func(m model.Metrics) {
 			defer wg.Done()
 
@@ -32,18 +33,22 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 				errChan <- err
 				return
 			}
+
 			endpoint := fmt.Sprintf("http://%s/update/", host)
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(jsonMetric))
+
 			if err != nil {
 				errChan <- err
 				return
 			}
+
 			req.Header.Set("Content-Type", "application/json")
 			res, err := client.Do(req)
 			if err != nil {
 				errChan <- err
 				return
 			}
+
 			res.Body.Close()
 		}(m)
 
@@ -54,9 +59,11 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 	}()
 
 	var errors []error
+
 	for err := range errChan {
 		errors = append(errors, err)
 	}
+
 	if len(errors) > 0 {
 		return fmt.Errorf("encountered %d errors: %v", len(errors), errors)
 	}
@@ -68,15 +75,20 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 func UpdateMetrics() []model.Metrics {
 	var metrics []model.Metrics
 	var MemStats runtime.MemStats
+
 	runtime.ReadMemStats(&MemStats)
+
 	msValue := reflect.ValueOf(MemStats)
 	msType := msValue.Type()
+
 	for _, metric := range model.GaugeMetrics {
 		field, ok := msType.FieldByName(metric)
 		if !ok {
 			continue
 		}
+
 		var value float64
+
 		switch msValue.FieldByName(metric).Interface().(type) {
 		case uint64:
 			value = float64(msValue.FieldByName(metric).Interface().(uint64))
@@ -88,11 +100,15 @@ func UpdateMetrics() []model.Metrics {
 			return nil
 
 		}
+
 		metrics = append(metrics, model.Metrics{ID: field.Name, Mtype: "gauge", Value: &value})
 	}
+
 	counter += 1
+
 	randValue := rand.Float64()
 	metrics = append(metrics, model.Metrics{ID: "RandomValue", Mtype: "gauge", Value: &randValue})
-	metrics = append(metrics, model.Metrics{ID: "PollCounter", Mtype: "counter", Delta: &counter})
+	metrics = append(metrics, model.Metrics{ID: "PollCount", Mtype: "counter", Delta: &counter})
+
 	return metrics
 }
