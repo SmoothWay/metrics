@@ -10,17 +10,14 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
 var counter int64
 
-func ReportMetrics(ctx context.Context, host string, metrics []model.Metrics) error {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+func ReportMetrics(ctx context.Context, client *http.Client, host string, metrics []model.Metrics) error {
+
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(metrics))
 
