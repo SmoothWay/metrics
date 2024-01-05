@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ func NewHandler(s *service.Service) *Handler {
 }
 func Router(h *Handler) chi.Router {
 	r := chi.NewMux()
-	// r.Use(logger.RequestLogger)
+	r.Use(logger.RequestLogger)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 	r.Get("/", h.GetAllHanler)
@@ -45,18 +46,23 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	err := dec.Decode(&jsonMetric)
 	if err != nil {
 		logger.Log.Debug("error decoding json", zap.String("error", err.Error()))
-		http.Error(w, "bad request", http.StatusBadRequest)
+		badRequestResponse(w, r, err)
 		return
 	}
 	err = h.s.Save(jsonMetric)
 	if err != nil {
 
 		logger.Log.Debug("error setting value", zap.String("error", err.Error()))
-		http.Error(w, "bad request", http.StatusBadRequest)
+		badRequestResponse(w, r, err)
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
 
+	err = h.s.Retrieve(&jsonMetric)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, jsonMetric)
 
 }
@@ -68,22 +74,21 @@ func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 	var jsonMetric model.Metrics
 	err := jsonDec.Decode(&jsonMetric)
 	if err != nil {
-		logger.Log.Debug("error decoding json", zap.String("error", err.Error()))
-		http.Error(w, "bad request", http.StatusBadRequest)
+		badRequestResponse(w, r, err)
 		return
 	}
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
 		logger.Log.Debug("error retireving value", zap.String("error", err.Error()))
-		http.Error(w, err.Error(), http.StatusNotFound)
+		notFoundResponse(w, r)
 		return
 	}
 	jsonEncode := json.NewEncoder(w)
 	err = jsonEncode.Encode(jsonMetric)
 	if err != nil {
 		logger.Log.Debug("error encoding metrics to json", zap.String("error", err.Error()))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		serverErrorResponse(w, r, err)
 		return
 	}
 }
@@ -97,7 +102,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		gaugeValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			logger.Log.Debug("incomming bad request", zap.String("incomming value is not valid type", err.Error()))
-			http.Error(w, "bad request", http.StatusBadRequest)
+			badRequestResponse(w, r, err)
 			return
 		}
 		metrics.Value = &gaugeValue
@@ -105,18 +110,18 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		counterValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			logger.Log.Debug("incomming bad request", zap.String("incomming value is not valid type", err.Error()))
-			http.Error(w, "bad request", http.StatusBadRequest)
+			badRequestResponse(w, r, err)
 			return
 		}
 		metrics.Delta = &counterValue
 	} else {
-		logger.Log.Debug("incomming bad request", zap.String("invalid metric type ", metrics.Mtype))
-		http.Error(w, "bad request", http.StatusBadRequest)
+		logger.Log.Debug("incomming bad request", zap.String("invalid metric type", metrics.Mtype))
+		badRequestResponse(w, r, errors.New("invalid metric type"))
 		return
 	}
 	if err := h.s.Save(metrics); err != nil {
 		logger.Log.Debug("bad incomming request", zap.String("error", err.Error()))
-		http.Error(w, "bad request", http.StatusBadRequest)
+		badRequestResponse(w, r, err)
 		return
 	}
 	w.Header().Add("Content-Type", "text-plain")
@@ -131,12 +136,12 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	err := h.s.Retrieve(&metrics)
 	if err != nil {
 		logger.Log.Debug("error retireving value", zap.String("error", err.Error()))
-		http.Error(w, err.Error(), http.StatusNotFound)
+		notFoundResponse(w, r)
 		return
 	}
-	if metrics.Mtype == service.TypeGauge {
+	if metrics.Mtype == model.MetricTypeGauge {
 		result = fmt.Sprintf("%g", *metrics.Value)
-	} else if metrics.Mtype == service.TypeCounter {
+	} else if metrics.Mtype == model.MetricTypeCounter {
 		result = fmt.Sprintf("%d", *metrics.Delta)
 	}
 	w.Header().Set("Content-Type", "text/plain")

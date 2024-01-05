@@ -12,6 +12,7 @@ import (
 	"github.com/SmoothWay/metrics/internal/config"
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -35,7 +36,8 @@ func main() {
 			logger.Log.Info("metrics updated")
 		case <-report.C:
 			if err := agent.ReportMetrics(ctx, config.Host, metrics); err != nil {
-				logger.Log.Fatal("error sending metrics")
+				logger.Log.Error("error sending metrics", zap.Error(err))
+				break
 			}
 			logger.Log.Info("metrics send")
 		case <-ctx.Done():

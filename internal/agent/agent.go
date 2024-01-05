@@ -19,7 +19,7 @@ var counter int64
 
 func ReportMetrics(ctx context.Context, host string, metrics []model.Metrics) error {
 	client := &http.Client{
-		Timeout: 20 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(metrics))
@@ -48,11 +48,6 @@ func ReportMetrics(ctx context.Context, host string, metrics []model.Metrics) er
 				return
 			}
 			res.Body.Close()
-
-			if err != nil {
-				errChan <- err
-				return
-			}
 		}(m)
 
 	}

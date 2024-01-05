@@ -44,7 +44,7 @@ func serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 func notFoundResponse(w http.ResponseWriter, r *http.Request) {
 	message := "the required resource could not be found"
 	env := envelope{"error": message}
-	errorResponse(w, r, http.StatusNotFound, env)
+	writeJSON(w, http.StatusNotFound, env)
 }
 
 func methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
@@ -52,5 +52,5 @@ func methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
 	env := envelope{"error": message}
 
-	errorResponse(w, r, http.StatusMethodNotAllowed, env)
+	writeJSON(w, http.StatusMethodNotAllowed, env)
 }

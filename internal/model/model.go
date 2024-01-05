@@ -1,5 +1,10 @@
 package model
 
+const (
+	MetricTypeCounter = "counter"
+	MetricTypeGauge   = "gauge"
+)
+
 var (
 	GaugeMetrics = []string{
 		"Alloc",

@@ -33,28 +33,34 @@ func New(repo Repository) *Service {
 }
 
 func (s *Service) Save(jsonMetric model.Metrics) error {
-	if jsonMetric.Delta != nil {
+	switch jsonMetric.Mtype {
+	case model.MetricTypeCounter:
 		return s.repo.SetCounterMetric(jsonMetric.ID, *jsonMetric.Delta)
-	} else if jsonMetric.Value != nil {
+	case model.MetricTypeGauge:
 		return s.repo.SetGaugeMetric(jsonMetric.ID, *jsonMetric.Value)
+	default:
+		return ErrInavlidMetricType
 	}
-	return ErrInavlidMetricType
 }
 
 func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
-	if jsonMetric.Delta != nil {
+	switch jsonMetric.Mtype {
+	case model.MetricTypeCounter:
 		value, err := s.repo.GetCounterMetric(jsonMetric.ID)
 		if err != nil {
 			return err
 		}
 		jsonMetric.Delta = &value
-	} else {
+	case model.MetricTypeGauge:
 		value, err := s.repo.GetGaugeMetric(jsonMetric.ID)
 		if err != nil {
 			return err
 		}
 		jsonMetric.Value = &value
+	default:
+		return ErrInavlidMetricType
 	}
+
 	return nil
 }
 
