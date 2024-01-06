@@ -5,15 +5,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/SmoothWay/metrics/internal/repository"
-	"github.com/SmoothWay/metrics/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/service"
 )
 
 func TestHandler_UpdateHandler(t *testing.T) {
 
-	// var url = "localhost:8080"
 	repo := repository.New()
 	service := service.New(repo)
 	h := NewHandler(service)
