@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/SmoothWay/metrics/internal/agent"
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
@@ -21,9 +20,9 @@ func Test_updateMetrics(t *testing.T) {
 
 		{name: "random value", field: "RandomValue", wantType: "gauge"},
 		{name: "alloc", field: "Alloc", wantType: "gauge"},
-		{name: "counter", field: "PollCounter", wantType: "counter"},
+		{name: "counter", field: "PollCount", wantType: "counter"},
 	}
-	metrics := agent.UpdateMetrics()
+	metrics := UpdateMetrics()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			found := false // Flag to track if tt.field is found in metrics
@@ -61,7 +60,7 @@ func Test_reportMetrics(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := agent.ReportMetrics(ctx, client, host, tt.args.metrics); (err != nil) != tt.wantErr {
+			if err := ReportMetrics(ctx, client, host, tt.args.metrics); (err != nil) != tt.wantErr {
 				t.Errorf("reportMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
