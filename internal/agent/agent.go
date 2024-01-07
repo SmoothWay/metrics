@@ -37,14 +37,14 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 				errChan <- err
 				return
 			}
-			cJsonMetric, err := compressData(jsonMetric)
+			cJSONMetric, err := compressData(jsonMetric)
 			if err != nil {
 				errChan <- err
 				return
 			}
 
 			endpoint := fmt.Sprintf("http://%s/update/", host)
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJsonMetric)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJSONMetric)
 
 			if err != nil {
 				errChan <- err

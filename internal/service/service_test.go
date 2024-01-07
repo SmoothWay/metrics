@@ -75,7 +75,7 @@ func TestService_Retrieve(t *testing.T) {
 	type args struct {
 		jsonMetric *model.Metrics
 	}
-	var gaugeValue float64 = 64.64
+	var gaugeValue = 64.64
 	var counterValue int64 = 123
 	saveMetric := []model.Metrics{
 		{
