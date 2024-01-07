@@ -1,5 +1,10 @@
 package model
 
+const (
+	MetricTypeCounter = "counter"
+	MetricTypeGauge   = "gauge"
+)
+
 var (
 	GaugeMetrics = []string{
 		"Alloc",
@@ -29,9 +34,15 @@ var (
 		"StackSys",
 		"Sys",
 		"TotalAlloc",
-		"RandomValue",
 	}
 )
+
+type Metrics struct {
+	ID    string   `json:"id"`
+	Mtype string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
 
 type Metric struct {
 	Name  string
