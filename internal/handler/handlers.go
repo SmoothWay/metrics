@@ -29,7 +29,8 @@ func NewHandler(s *service.Service) *Handler {
 func Router(h *Handler) chi.Router {
 	r := chi.NewMux()
 
-	r.Use(logger.RequestLogger)
+	r.Use(RequestLogger)
+	r.Use(Decompresser)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 

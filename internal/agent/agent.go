@@ -2,16 +2,20 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"reflect"
 	"runtime"
 	"sync"
 
+	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
+	"go.uber.org/zap"
 )
 
 var counter int64
@@ -33,22 +37,30 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 				errChan <- err
 				return
 			}
+			cJsonMetric, err := compressData(jsonMetric)
+			if err != nil {
+				errChan <- err
+				return
+			}
 
 			endpoint := fmt.Sprintf("http://%s/update/", host)
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(jsonMetric))
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJsonMetric)
 
 			if err != nil {
 				errChan <- err
 				return
 			}
 
+			req.Body.Close()
+
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Encoding", "gzip")
+
 			res, err := client.Do(req)
 			if err != nil {
 				errChan <- err
 				return
 			}
-
 			res.Body.Close()
 		}(m)
 
@@ -111,4 +123,26 @@ func UpdateMetrics() []model.Metrics {
 	metrics = append(metrics, model.Metrics{ID: "PollCount", Mtype: "counter", Delta: &counter})
 
 	return metrics
+}
+
+func compressData(data []byte) (io.Reader, error) {
+	b := new(bytes.Buffer)
+	w, err := gzip.NewWriterLevel(b, gzip.BestSpeed)
+	if err != nil {
+		logger.Log.Error("error init gzip writer", zap.Error(err))
+		return nil, err
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		logger.Log.Error("error compressing data", zap.Error(err))
+		return nil, err
+	}
+	err = w.Close()
+	w.Reset(b)
+	if err != nil {
+		logger.Log.Error("error closing writer", zap.Error(err))
+		return nil, err
+	}
+
+	return b, nil
 }
