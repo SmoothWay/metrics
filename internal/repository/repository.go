@@ -70,19 +70,19 @@ func (ms *MemStorage) GetAllMetric() *MemStorage {
 	return ms
 }
 
-func (m *MemStorage) ToString() string {
+func (ms *MemStorage) ToString() string {
 	var builder strings.Builder
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
 
 	builder.WriteString("Gauge:\n")
-	for key, value := range m.Gauge {
+	for key, value := range ms.Gauge {
 		builder.WriteString(fmt.Sprintf("%s: %f\n", key, value))
 	}
 
 	builder.WriteString("Counter:\n")
-	for key, value := range m.Counter {
+	for key, value := range ms.Counter {
 		builder.WriteString(fmt.Sprintf("%s: %d\n", key, value))
 	}
 
