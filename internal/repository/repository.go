@@ -2,6 +2,8 @@ package repository
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -66,4 +68,23 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 
 func (ms *MemStorage) GetAllMetric() *MemStorage {
 	return ms
+}
+
+func (m *MemStorage) ToString() string {
+	var builder strings.Builder
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	builder.WriteString("Gauge:\n")
+	for key, value := range m.Gauge {
+		builder.WriteString(fmt.Sprintf("%s: %f\n", key, value))
+	}
+
+	builder.WriteString("Counter:\n")
+	for key, value := range m.Counter {
+		builder.WriteString(fmt.Sprintf("%s: %d\n", key, value))
+	}
+
+	return builder.String()
 }

@@ -158,5 +158,5 @@ func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
 	metrics := h.s.GetAll()
 
 	w.Header().Set("Content-Type", "text/html")
-	writeJSON(w, http.StatusOK, metrics)
+	w.Write([]byte(metrics.ToString()))
 }
