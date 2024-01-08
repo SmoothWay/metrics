@@ -2,7 +2,9 @@ package repository
 
 import (
 	"errors"
-	"reflect"
+	"fmt"
+	"strings"
+	"sync"
 )
 
 var (
@@ -11,56 +13,78 @@ var (
 )
 
 type MemStorage struct {
-	data map[string]interface{}
+	Gauge   map[string]float64
+	Counter map[string]int64
+	mu      *sync.RWMutex
 }
 
 func New() *MemStorage {
 	return &MemStorage{
-		data: make(map[string]interface{}),
+		Gauge:   make(map[string]float64),
+		Counter: make(map[string]int64),
+		mu:      &sync.RWMutex{},
 	}
 }
 
 func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
-	currentValue, exists := ms.data[key]
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	_, exists := ms.Counter[key]
 
 	if exists {
-		if reflect.TypeOf(currentValue) == reflect.TypeOf(int64(0)) {
-			ms.data[key] = currentValue.(int64) + value
-			return nil
-		} else {
-			return ErrCannotAssign
-		}
+		ms.Counter[key] += value
+		return nil
 	}
-	ms.data[key] = value
+	ms.Counter[key] = value
 	return nil
 }
 
 func (ms *MemStorage) SetGaugeMetric(key string, value float64) error {
-	currentValue := ms.data[key]
-	if reflect.TypeOf(currentValue) == reflect.TypeOf(int64(0)) {
-		return ErrCannotAssign
-	}
-
-	ms.data[key] = value
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	ms.Gauge[key] = value
 	return nil
 }
 
 func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
-	v, ok := ms.data[key]
+	ms.mu.RLock()
+	v, ok := ms.Counter[key]
+	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
 	}
-	return v.(int64), nil
+	return v, nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
-	v, ok := ms.data[key]
+	ms.mu.RLock()
+	v, ok := ms.Gauge[key]
+	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
 	}
-	return v.(float64), nil
+	return v, nil
 }
 
-func (ms *MemStorage) GetAllMetric() map[string]interface{} {
-	return ms.data
+func (ms *MemStorage) GetAllMetric() *MemStorage {
+	return ms
+}
+
+func (ms *MemStorage) ToString() string {
+	var builder strings.Builder
+
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	builder.WriteString("Gauge:\n")
+	for key, value := range ms.Gauge {
+		builder.WriteString(fmt.Sprintf("%s: %f\n", key, value))
+	}
+
+	builder.WriteString("Counter:\n")
+	for key, value := range ms.Counter {
+		builder.WriteString(fmt.Sprintf("%s: %d\n", key, value))
+	}
+
+	return builder.String()
 }
