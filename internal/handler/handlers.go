@@ -66,7 +66,6 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		serverErrorResponse(w, r, err)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, jsonMetric)
 }
 
@@ -156,13 +155,8 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
-	var result string
 	metrics := h.s.GetAll()
 
-	for k, v := range metrics {
-		result += fmt.Sprintf("%s: %s\n", k, v)
-	}
-
 	w.Header().Set("Content-Type", "text/html")
-	io.WriteString(w, result)
+	writeJSON(w, http.StatusOK, metrics)
 }

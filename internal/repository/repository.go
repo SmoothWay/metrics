@@ -11,15 +11,15 @@ var (
 )
 
 type MemStorage struct {
-	gauge   map[string]float64
-	counter map[string]int64
+	Gauge   map[string]float64
+	Counter map[string]int64
 	mu      *sync.RWMutex
 }
 
 func New() *MemStorage {
 	return &MemStorage{
-		gauge:   make(map[string]float64),
-		counter: make(map[string]int64),
+		Gauge:   make(map[string]float64),
+		Counter: make(map[string]int64),
 		mu:      &sync.RWMutex{},
 	}
 }
@@ -27,26 +27,26 @@ func New() *MemStorage {
 func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	_, exists := ms.counter[key]
+	_, exists := ms.Counter[key]
 
 	if exists {
-		ms.counter[key] += value
+		ms.Counter[key] += value
 		return nil
 	}
-	ms.counter[key] = value
+	ms.Counter[key] = value
 	return nil
 }
 
 func (ms *MemStorage) SetGaugeMetric(key string, value float64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	ms.gauge[key] = value
+	ms.Gauge[key] = value
 	return nil
 }
 
 func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
 	ms.mu.RLock()
-	v, ok := ms.counter[key]
+	v, ok := ms.Counter[key]
 	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
@@ -56,7 +56,7 @@ func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
 
 func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	ms.mu.RLock()
-	v, ok := ms.gauge[key]
+	v, ok := ms.Gauge[key]
 	ms.mu.RUnlock()
 	if !ok {
 		return 0, ErrNotFound
@@ -64,16 +64,6 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	return v, nil
 }
 
-func (ms *MemStorage) GetAllMetric() map[string]interface{} {
-	ms.mu.RLock()
-	data := make(map[string]interface{}, len(ms.counter)+len(ms.gauge))
-	for k, v := range ms.gauge {
-		data[k] = v
-	}
-
-	for k, v := range ms.counter {
-		data[k] = v
-	}
-	ms.mu.RUnlock()
-	return data
+func (ms *MemStorage) GetAllMetric() *MemStorage {
+	return ms
 }
