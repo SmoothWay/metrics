@@ -1,77 +1,63 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
-	"math/rand"
 	"net/http"
-	"reflect"
-	"runtime"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/SmoothWay/metrics/internal/agent"
 	"github.com/SmoothWay/metrics/internal/config"
+	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
 )
-
-var counter int64
 
 func main() {
 
 	config := config.NewAgentConfig()
-	var metrics []model.Metric
+	var metrics []model.Metrics
 
-	go func() {
-		for {
-			metrics = updateMetrics()
-			time.Sleep(time.Duration(config.PollInterval) * time.Second)
-		}
-	}()
+	err := logger.Init("info")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	logger.Log.Info("Starting agent...")
+
+	poll := time.NewTicker(time.Duration(config.PollInterval) * time.Second)
+	report := time.NewTicker(time.Duration(config.ReportInterval) * time.Second)
+
+	client := &http.Client{
+		Timeout: time.Minute,
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+
 	for {
-		err := reportMetrics(config.Host, metrics)
-		if err != nil {
-			log.Fatal(err)
-		}
-		time.Sleep(time.Duration(config.ReportInterval) * time.Second)
-	}
-}
+		select {
 
-func reportMetrics(host string, metrics []model.Metric) error {
+		case <-poll.C:
+			metrics = agent.UpdateMetrics()
+			logger.Log.Info("metrics updated")
 
-	for _, m := range metrics {
-		client := &http.Client{
-			Timeout: 10 * time.Second,
-		}
-		endpoint := fmt.Sprintf("http://%s/%s/%s/%v", host, m.Type, m.Name, m.Value)
-		req, err := http.NewRequest(http.MethodPost, endpoint, nil)
-		if err != nil {
-			return err
-		}
-		req.Header.Add("Content-Type", "text/plain")
-		res, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		res.Body.Close()
-	}
-	return nil
-}
+		case <-report.C:
+			if err := agent.ReportMetrics(ctx, client, config.Host, metrics); err != nil {
+				logger.Log.Error("error sending metrics", zap.Error(err))
+			} else {
+				logger.Log.Info("metrics send")
+			}
 
-func updateMetrics() []model.Metric {
-	var metrics []model.Metric
-	var MemStats runtime.MemStats
-	runtime.ReadMemStats(&MemStats)
-	msValue := reflect.ValueOf(MemStats)
-	msType := msValue.Type()
-	for _, metric := range model.GaugeMetrics {
-		field, ok := msType.FieldByName(metric)
-		if !ok {
-			continue
+		case <-ctx.Done():
+			logger.Log.Info("shutting down agent...")
+			poll.Stop()
+			report.Stop()
+			os.Exit(0)
 		}
-		value := msValue.FieldByName(metric)
-		metrics = append(metrics, model.Metric{Name: field.Name, Type: "gauge", Value: value})
 	}
-	counter += 1
-	metrics = append(metrics, model.Metric{Name: "RandomValue", Type: "gauge", Value: rand.Float64()})
-	metrics = append(metrics, model.Metric{Name: "PollCounter", Type: "counter", Value: counter})
-	return metrics
 }

@@ -1,68 +1,126 @@
 package config
 
 import (
+	"errors"
 	"flag"
+	"log"
 
+	"github.com/caarlos0/env/v6"
+	"go.uber.org/zap"
+
+	"github.com/SmoothWay/metrics/internal/backup"
 	"github.com/SmoothWay/metrics/internal/handler"
 	"github.com/SmoothWay/metrics/internal/repository"
 	"github.com/SmoothWay/metrics/internal/service"
-	"github.com/caarlos0/env/v6"
 )
 
 type AgentConfig struct {
 	Host           string `env:"ADDRESS"`
+	LogLevel       string `env:"LOG_LEVEL"`
 	PollInterval   int    `env:"REPORT_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 }
 
 type ServerConfig struct {
-	Host string `env:"ADDRESS"`
-	H    *handler.Handler
+	Host           string `env:"ADDRESS"`
+	LogLevel       string `env:"LOG_LEVEL"`
+	StoragePath    string `env:"STORAGE_PATH"`
+	StoreInvterval int64  `env:"STORE_INTERVAL"`
+	Restore        bool   `env:"RESTORE"`
+	B              *backup.BackupConfig
+	H              *handler.Handler
 }
 
 func NewServerConfig() *ServerConfig {
-	host := parseServerFlags()
+	var err error
+	flagConfig := parseServerFlags()
 	config := &ServerConfig{}
 	env.Parse(config)
+
 	if config.Host == "" {
-		config.Host = host
+		config.Host = flagConfig.Host
+	}
+
+	if config.LogLevel == "" {
+		config.LogLevel = flagConfig.LogLevel
+	}
+
+	if config.StoreInvterval == 0 {
+		config.StoreInvterval = flagConfig.StoreInvterval
+	}
+
+	if config.StoragePath == "" {
+		config.StoragePath = flagConfig.StoragePath
+	}
+
+	if !config.Restore {
+		config.Restore = flagConfig.Restore
 	}
 	repo := repository.New()
+
+	if config.Restore {
+		repo, err = backup.Restore(config.StoragePath)
+		if err != nil {
+			if errors.Is(backup.ErrRestoreFromJSON, err) {
+				log.Println("cant restore from json")
+			} else {
+				log.Fatal("unexpected err restoring from json", zap.Error(err))
+			}
+		}
+	}
 	serv := service.New(repo)
+
+	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
+	if err != nil {
+		log.Fatal("err creating backupper", zap.Error(err))
+	}
 	config.H = handler.NewHandler(serv)
+
 	return config
 }
 
 func NewAgentConfig() *AgentConfig {
 
-	host, pollInterval, reportInterval := parseAgentFlags()
-	config := &AgentConfig{}
-	env.Parse(config)
+	flagAgentConfig := parseAgentFlags()
+	Agentconfig := &AgentConfig{}
+	env.Parse(Agentconfig)
 
-	if config.Host == "" {
-		config.Host = host
+	if Agentconfig.Host == "" {
+		Agentconfig.Host = flagAgentConfig.Host
 	}
-	if config.PollInterval == 0 {
-		config.PollInterval = pollInterval
+	if Agentconfig.PollInterval == 0 {
+		Agentconfig.PollInterval = flagAgentConfig.PollInterval
 	}
-	if config.ReportInterval == 0 {
-		config.ReportInterval = reportInterval
+	if Agentconfig.ReportInterval == 0 {
+		Agentconfig.ReportInterval = flagAgentConfig.ReportInterval
 	}
+	if Agentconfig.LogLevel == "" {
+		Agentconfig.LogLevel = flagAgentConfig.LogLevel
+	}
+
+	return Agentconfig
+}
+
+func parseServerFlags() *ServerConfig {
+	config := &ServerConfig{}
+	flag.StringVar(&config.Host, "a", "localhost:8080", "server host")
+	flag.StringVar(&config.LogLevel, "l", "info", "log level")
+	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
+	flag.Int64Var(&config.StoreInvterval, "i", 300, "interval of storing metrics")
+	flag.BoolVar(&config.Restore, "r", true, "store metrics in file")
+	flag.Parse()
+
 	return config
 }
 
-func parseServerFlags() string {
-	host := flag.String("a", "localhost:8080", "server host")
+func parseAgentFlags() *AgentConfig {
+	config := &AgentConfig{}
+	flag.IntVar(&config.ReportInterval, "r", 10, "report interval")
+	flag.IntVar(&config.PollInterval, "p", 2, "polling interval")
+	flag.StringVar(&config.Host, "a", "localhost:8080", "server address")
+	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 
 	flag.Parse()
-	return *host
-}
 
-func parseAgentFlags() (string, int, int) {
-	reportInt := flag.Int("r", 10, "report interval")
-	pollInt := flag.Int("p", 2, "polling interval")
-	host := flag.String("a", "localhost:8080", "server address")
-	flag.Parse()
-
-	return *host, *pollInt, *reportInt
+	return config
 }
