@@ -35,12 +35,23 @@ func Router(h *Handler) chi.Router {
 	r.NotFound(notFoundResponse)
 
 	r.Get("/", h.GetAllHanler)
+	r.Get("/ping", h.PingHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetHandler)
 	r.Post("/value/", h.JSONGetHandler)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
 	r.Post("/update/", h.JSONUpdateHandler)
 
 	return r
+}
+
+func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
+	err := h.s.DB.Ping()
+	if err != nil {
+		logger.Log.Info("error pinging DB", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {

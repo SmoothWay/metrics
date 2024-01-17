@@ -1,11 +1,13 @@
 package config
 
 import (
+	"database/sql"
 	"errors"
 	"flag"
 	"log"
 
 	"github.com/caarlos0/env/v6"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
 	"github.com/SmoothWay/metrics/internal/backup"
@@ -23,6 +25,7 @@ type AgentConfig struct {
 
 type ServerConfig struct {
 	Host           string `env:"ADDRESS"`
+	DSN            string `env:"DATABASE_DSN"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	StoragePath    string `env:"STORAGE_PATH"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
@@ -39,6 +42,10 @@ func NewServerConfig() *ServerConfig {
 
 	if config.Host == "" {
 		config.Host = flagConfig.Host
+	}
+
+	if config.DSN == "" {
+		config.DSN = flagConfig.DSN
 	}
 
 	if config.LogLevel == "" {
@@ -68,7 +75,13 @@ func NewServerConfig() *ServerConfig {
 			}
 		}
 	}
-	serv := service.New(repo)
+
+	conn, err := sql.Open("pgx", config.DSN)
+	if err != nil {
+		log.Fatal("failed to open db connection", zap.Error(err))
+	}
+
+	serv := service.New(repo, conn)
 
 	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
 	if err != nil {
@@ -104,6 +117,7 @@ func NewAgentConfig() *AgentConfig {
 func parseServerFlags() *ServerConfig {
 	config := &ServerConfig{}
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server host")
+	flag.StringVar(&config.DSN, "d", "user=postgres password=postgres host=127.0.0.1 port=5432 dbname=metricsDB", "DB connection string")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
 	flag.Int64Var(&config.StoreInvterval, "i", 300, "interval of storing metrics")

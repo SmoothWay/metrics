@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/SmoothWay/metrics/internal/model"
@@ -19,6 +20,7 @@ var (
 
 type Service struct {
 	repo Repository
+	DB   *sql.DB
 }
 
 type Repository interface {
@@ -29,8 +31,8 @@ type Repository interface {
 	SetGaugeMetric(string, float64) error
 }
 
-func New(repo Repository) *Service {
-	return &Service{repo: repo}
+func New(repo Repository, db *sql.DB) *Service {
+	return &Service{repo: repo, DB: db}
 }
 
 func (s *Service) Save(jsonMetric model.Metrics) error {

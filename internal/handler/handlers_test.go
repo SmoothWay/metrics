@@ -15,7 +15,7 @@ import (
 func TestHandler_UpdateHandler(t *testing.T) {
 
 	repo := repository.New()
-	service := service.New(repo)
+	service := service.New(repo, nil)
 	h := NewHandler(service)
 
 	ts := httptest.NewServer(Router(h))
