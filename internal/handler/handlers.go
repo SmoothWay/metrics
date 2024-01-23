@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"strconv"
@@ -65,7 +68,7 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		badRequestResponse(w, r, err)
 		return
 	}
-
+	logger.Log.Info("jsonMetric", zap.Any("jsonMetric", jsonMetric))
 	err = h.s.Save(jsonMetric)
 	if err != nil {
 		badRequestResponse(w, r, err)
@@ -74,6 +77,10 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			notFoundResponse(w, r)
+			return
+		}
 		serverErrorResponse(w, r, err)
 		return
 	}
@@ -133,6 +140,10 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.s.Save(metrics); err != nil {
+		if err == sql.ErrNoRows {
+			notFoundResponse(w, r)
+			return
+		}
 		badRequestResponse(w, r, err)
 		return
 	}
@@ -168,6 +179,17 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
 	metrics := h.s.GetAll()
 
+	tmpl, err := template.New("metrics").Parse(model.HTMLTemplate)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+	buf := bytes.Buffer{}
+	if err = tmpl.Execute(&buf, metrics); err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(fmt.Sprintf("%+v", metrics)))
+	w.Write(buf.Bytes())
 }

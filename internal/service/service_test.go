@@ -57,7 +57,7 @@ func TestService_Save(t *testing.T) {
 		},
 	}
 	s := &Service{
-		repo: memstorage.New(),
+		repo: memstorage.New(nil),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestService_Retrieve(t *testing.T) {
 	}
 
 	s := &Service{
-		repo: memstorage.New(),
+		repo: memstorage.New(nil),
 	}
 
 	for _, smv := range saveMetric {

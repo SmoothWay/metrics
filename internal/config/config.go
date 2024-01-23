@@ -12,6 +12,7 @@ import (
 
 	"github.com/SmoothWay/metrics/internal/backup"
 	"github.com/SmoothWay/metrics/internal/handler"
+	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/SmoothWay/metrics/internal/repository/memstorage"
 	"github.com/SmoothWay/metrics/internal/repository/postgres"
 	"github.com/SmoothWay/metrics/internal/service"
@@ -66,21 +67,13 @@ func NewServerConfig() *ServerConfig {
 	}
 	var repo service.Repository
 	var dbConn *sql.DB
-
-	if config.DSN != "" {
-		dbConn, err := sql.Open("pgx", config.DSN)
-		if err != nil {
-			log.Fatal("failed to open db connection", zap.Error(err))
-		}
-		repo = postgres.New(dbConn)
-	} else {
-		repo = memstorage.New()
-	}
-
+	var metrics *[]model.Metrics
 	if config.Restore {
-		repo, err = backup.Restore(config.StoragePath)
+		// check model.Metrics
+		var err error
+		metrics, err = backup.Restore(config.StoragePath)
 		if err != nil {
-			if errors.Is(backup.ErrRestoreFromJSON, err) {
+			if errors.Is(backup.ErrRestoreFromFile, err) {
 				log.Println("cant restore from json")
 			} else {
 				log.Fatal("unexpected err restoring from json", zap.Error(err))
@@ -88,12 +81,25 @@ func NewServerConfig() *ServerConfig {
 		}
 	}
 
+	if config.DSN != "" {
+		dbConn, err = sql.Open("pgx", config.DSN)
+		if err != nil {
+			log.Fatal("failed to open db connection", zap.Error(err))
+		}
+		repo, err = postgres.New(dbConn)
+		if err != nil {
+			log.Fatal("error init postgres:", err)
+		}
+	} else {
+		repo = memstorage.New(metrics)
+	}
 	serv := service.New(repo, dbConn)
 
 	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
 	if err != nil {
 		log.Fatal("err creating backupper", zap.Error(err))
 	}
+
 	config.H = handler.NewHandler(serv)
 
 	return config
@@ -124,7 +130,7 @@ func NewAgentConfig() *AgentConfig {
 func parseServerFlags() *ServerConfig {
 	config := &ServerConfig{}
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server host")
-	flag.StringVar(&config.DSN, "d", "user=postgres password=postgres host=127.0.0.1 port=5432 dbname=metricsDB", "DB connection string")
+	flag.StringVar(&config.DSN, "d", "", "DB connection string")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
 	flag.Int64Var(&config.StoreInvterval, "i", 300, "interval of storing metrics")

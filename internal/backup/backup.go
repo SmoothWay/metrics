@@ -10,7 +10,6 @@ import (
 
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/SmoothWay/metrics/internal/repository/memstorage"
 	"github.com/SmoothWay/metrics/internal/service"
 	"go.uber.org/zap"
 )
@@ -35,13 +34,20 @@ func (b *BackupConfig) Backup(ctx context.Context) error {
 	backupInterval := time.NewTicker(time.Duration(b.Interval) * time.Second)
 	for {
 		metrics := b.s.GetAll()
+
 		select {
 		case <-backupInterval.C:
+			if len(metrics) == 0 {
+				continue
+			}
 			err := b.saveTofile(metrics)
 			if err != nil {
 				return err
 			}
 		case <-ctx.Done():
+			if len(metrics) == 0 {
+				return nil
+			}
 			err := b.saveTofile(metrics)
 			return err
 		}
@@ -49,21 +55,23 @@ func (b *BackupConfig) Backup(ctx context.Context) error {
 	}
 }
 
-var ErrRestoreFromJSON = errors.New("error restoring from JSON")
+var ErrRestoreFromFile = errors.New("error restoring from file")
 
-func Restore(FilePath string) (*memstorage.MemStorage, error) {
+func Restore(FilePath string) (*[]model.Metrics, error) {
 	file, err := os.OpenFile(FilePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		logger.Log.Error("Error opening file", zap.Error(err))
+		log.Println("error opening file", err)
 		return nil, err
 	}
-	m := memstorage.New()
-	if err := json.NewDecoder(file).Decode(m); err != nil {
-		logger.Log.Error("Error by decode metrics from json", zap.Error(err))
-		return m, ErrRestoreFromJSON
+	metrics := make([]model.Metrics, 0)
+
+	if err := json.NewDecoder(file).Decode(&metrics); err != nil {
+		log.Println("error by decode metrics from json", err)
+		return &metrics, ErrRestoreFromFile
 	}
-	log.Printf("restored from file: %+v\n", m)
-	return m, nil
+
+	log.Println("restored metrics from file")
+	return &metrics, nil
 }
 
 func (b *BackupConfig) saveTofile(m []model.Metrics) error {

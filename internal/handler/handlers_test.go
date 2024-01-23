@@ -14,7 +14,7 @@ import (
 
 func TestHandler_UpdateHandler(t *testing.T) {
 
-	repo := memstorage.New()
+	repo := memstorage.New(nil)
 	service := service.New(repo, nil)
 	h := NewHandler(service)
 

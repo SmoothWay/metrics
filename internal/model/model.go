@@ -44,8 +44,13 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
-type Metric struct {
-	Name  string
-	Type  string
-	Value interface{}
-}
+const HTMLTemplate = `
+{{range .}}
+    {{if eq .Mtype "gauge"}}
+        {{.ID}}: {{.Value}}
+    {{else if eq .Mtype "counter"}}
+        {{.ID}}: {{.Delta}}
+    {{end}}
+	<br>
+{{end}}
+`
