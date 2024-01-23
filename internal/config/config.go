@@ -12,7 +12,8 @@ import (
 
 	"github.com/SmoothWay/metrics/internal/backup"
 	"github.com/SmoothWay/metrics/internal/handler"
-	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/repository/memstorage"
+	"github.com/SmoothWay/metrics/internal/repository/postgres"
 	"github.com/SmoothWay/metrics/internal/service"
 )
 
@@ -63,7 +64,18 @@ func NewServerConfig() *ServerConfig {
 	if !config.Restore {
 		config.Restore = flagConfig.Restore
 	}
-	repo := repository.New()
+	var repo service.Repository
+	var dbConn *sql.DB
+
+	if config.DSN != "" {
+		dbConn, err := sql.Open("pgx", config.DSN)
+		if err != nil {
+			log.Fatal("failed to open db connection", zap.Error(err))
+		}
+		repo = postgres.New(dbConn)
+	} else {
+		repo = memstorage.New()
+	}
 
 	if config.Restore {
 		repo, err = backup.Restore(config.StoragePath)
@@ -76,12 +88,7 @@ func NewServerConfig() *ServerConfig {
 		}
 	}
 
-	conn, err := sql.Open("pgx", config.DSN)
-	if err != nil {
-		log.Fatal("failed to open db connection", zap.Error(err))
-	}
-
-	serv := service.New(repo, conn)
+	serv := service.New(repo, dbConn)
 
 	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
 	if err != nil {

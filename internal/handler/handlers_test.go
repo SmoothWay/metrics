@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/repository/memstorage"
 	"github.com/SmoothWay/metrics/internal/service"
 )
 
 func TestHandler_UpdateHandler(t *testing.T) {
 
-	repo := repository.New()
+	repo := memstorage.New()
 	service := service.New(repo, nil)
 	h := NewHandler(service)
 

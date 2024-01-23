@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/SmoothWay/metrics/internal/repository"
 )
 
 const (
@@ -24,7 +23,7 @@ type Service struct {
 }
 
 type Repository interface {
-	GetAllMetric() *repository.MemStorage
+	GetAllMetric() []model.Metrics
 	GetCounterMetric(string) (int64, error)
 	GetGaugeMetric(string) (float64, error)
 	SetCounterMetric(string, int64) error
@@ -67,6 +66,6 @@ func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
 	return nil
 }
 
-func (s *Service) GetAll() *repository.MemStorage {
+func (s *Service) GetAll() []model.Metrics {
 	return s.repo.GetAllMetric()
 }

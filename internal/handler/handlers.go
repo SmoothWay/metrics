@@ -169,5 +169,5 @@ func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
 	metrics := h.s.GetAll()
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(metrics.ToString()))
+	w.Write([]byte(fmt.Sprintf("%+v", metrics)))
 }

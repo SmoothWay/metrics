@@ -1,10 +1,12 @@
-package repository
+package memstorage
 
 import (
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/SmoothWay/metrics/internal/model"
 )
 
 var (
@@ -66,8 +68,24 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	return v, nil
 }
 
-func (ms *MemStorage) GetAllMetric() *MemStorage {
-	return ms
+func (ms *MemStorage) GetAllMetric() []model.Metrics {
+	lenMetrics := len(ms.Counter) + len(ms.Gauge)
+	metrics := make([]model.Metrics, 0, lenMetrics)
+	i := 0
+	for k, v := range ms.Counter {
+		metrics[i].ID = k
+		metrics[i].Mtype = model.MetricTypeCounter
+		metrics[i].Delta = &v
+		i++
+	}
+	for k, v := range ms.Gauge {
+		metrics[i].ID = k
+		metrics[i].Mtype = model.MetricTypeGauge
+		metrics[i].Value = &v
+		i++
+	}
+
+	return metrics
 }
 
 func (ms *MemStorage) ToString() string {
