@@ -26,12 +26,21 @@ type Repository interface {
 	GetAllMetric() []model.Metrics
 	GetCounterMetric(string) (int64, error)
 	GetGaugeMetric(string) (float64, error)
+	SetAllMetrics([]model.Metrics) error
 	SetCounterMetric(string, int64) error
 	SetGaugeMetric(string, float64) error
 }
 
 func New(repo Repository, db *sql.DB) *Service {
 	return &Service{repo: repo, DB: db}
+}
+
+func (s *Service) SaveAll(metrics []model.Metrics) error {
+	err := s.repo.SetAllMetrics(metrics)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) Save(jsonMetric model.Metrics) error {

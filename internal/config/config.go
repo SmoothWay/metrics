@@ -69,7 +69,7 @@ func NewServerConfig() *ServerConfig {
 	var dbConn *sql.DB
 	var metrics *[]model.Metrics
 	if config.Restore {
-		// check model.Metrics
+
 		var err error
 		metrics, err = backup.Restore(config.StoragePath)
 		if err != nil {

@@ -33,10 +33,11 @@ func New(interval int64, path string, serv *service.Service) (*BackupConfig, err
 func (b *BackupConfig) Backup(ctx context.Context) error {
 	backupInterval := time.NewTicker(time.Duration(b.Interval) * time.Second)
 	for {
-		metrics := b.s.GetAll()
 
 		select {
 		case <-backupInterval.C:
+			metrics := b.s.GetAll()
+
 			if len(metrics) == 0 {
 				continue
 			}
@@ -45,6 +46,8 @@ func (b *BackupConfig) Backup(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
+			metrics := b.s.GetAll()
+
 			if len(metrics) == 0 {
 				return nil
 			}

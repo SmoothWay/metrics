@@ -20,6 +20,36 @@ import (
 
 var counter int64
 
+func ReportAllMetricsAtOnes(ctx context.Context, client *http.Client, host string, metrics []model.Metrics) error {
+	jsonMetric, err := json.Marshal(metrics)
+	if err != nil {
+		return err
+	}
+	cJSONMetric, err := compressData(jsonMetric)
+	if err != nil {
+		return err
+	}
+
+	endpoint := fmt.Sprintf("http://%s/updates/", host)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJSONMetric)
+	if err != nil {
+		return err
+	}
+
+	req.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	return nil
+
+}
+
 func ReportMetrics(ctx context.Context, client *http.Client, host string, metrics []model.Metrics) error {
 
 	var wg sync.WaitGroup
@@ -31,6 +61,13 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 
 		go func(m model.Metrics) {
 			defer wg.Done()
+
+			// buf := bytes.Buffer{}
+			// err := json.NewEncoder(&buf).Encode(m)
+			// if err != nil {
+			// 	errChan <- err
+			// 	return
+			// }
 
 			jsonMetric, err := json.Marshal(m)
 			if err != nil {
@@ -45,7 +82,6 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 
 			endpoint := fmt.Sprintf("http://%s/update/", host)
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJSONMetric)
-
 			if err != nil {
 				errChan <- err
 				return

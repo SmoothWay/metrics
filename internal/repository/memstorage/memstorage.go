@@ -2,8 +2,6 @@ package memstorage
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/SmoothWay/metrics/internal/model"
@@ -19,10 +17,6 @@ type MemStorage struct {
 	Counter map[string]int64
 	mu      *sync.RWMutex
 }
-
-// Maybe add parameter model.Metrics and fill it with metrics
-// Good FIT
-// and when restore, decode to model.Metrics
 
 func New(metrics *[]model.Metrics) *MemStorage {
 	gauge := make(map[string]float64)
@@ -83,6 +77,17 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	return v, nil
 }
 
+func (ms *MemStorage) SetAllMetrics(metrics []model.Metrics) error {
+	for _, v := range metrics {
+		if v.Mtype == model.MetricTypeCounter {
+			ms.Counter[v.ID] += *v.Delta
+		} else if v.Mtype == model.MetricTypeGauge {
+			ms.Gauge[v.ID] = *v.Value
+		}
+	}
+	return nil
+}
+
 func (ms *MemStorage) GetAllMetric() []model.Metrics {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
@@ -102,18 +107,4 @@ func (ms *MemStorage) GetAllMetric() []model.Metrics {
 		i++
 	}
 	return metrics
-}
-
-func (ms *MemStorage) ToString(metrics []model.Metrics) string {
-	var builder strings.Builder
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	for _, v := range metrics {
-		if v.Mtype == model.MetricTypeCounter {
-			builder.WriteString(fmt.Sprintf("%s: %d\n", v.ID, *v.Delta))
-		} else {
-			builder.WriteString(fmt.Sprintf("%s: %g\n", v.ID, *v.Value))
-		}
-	}
-	return builder.String()
 }

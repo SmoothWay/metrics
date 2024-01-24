@@ -47,7 +47,7 @@ func main() {
 			logger.Log.Info("metrics updated")
 
 		case <-report.C:
-			if err := agent.ReportMetrics(ctx, client, config.Host, metrics); err != nil {
+			if err := agent.ReportAllMetricsAtOnes(ctx, client, config.Host, metrics); err != nil {
 				logger.Log.Error("error sending metrics", zap.Error(err))
 			} else {
 				logger.Log.Info("metrics send")

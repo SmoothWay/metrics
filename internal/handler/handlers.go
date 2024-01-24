@@ -43,6 +43,7 @@ func Router(h *Handler) chi.Router {
 	r.Post("/value/", h.JSONGetHandler)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
 	r.Post("/update/", h.JSONUpdateHandler)
+	r.Post("/updates/", h.SetAllMetrics)
 
 	return r
 }
@@ -101,7 +102,7 @@ func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
-		logger.Log.Debug("error retrieving value", zap.String("value", jsonMetric.ID), zap.Error(err))
+		logger.Log.Info("error retrieving value", zap.String("value", jsonMetric.ID), zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -174,6 +175,23 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	io.WriteString(w, result)
+}
+
+func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics := make([]model.Metrics, 1)
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		badRequestResponse(w, r, err)
+		return
+	}
+	defer r.Body.Close()
+	logger.Log.Info("SetAllMetrics", zap.Any("metrics", metrics))
+	err = h.s.SaveAll(metrics)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {

@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
+	"go.uber.org/zap"
 )
 
 var ErrNotFound = errors.New("value not found")
@@ -37,16 +39,16 @@ func New(db *sql.DB) (*PostgreDB, error) {
 func (p *PostgreDB) SetCounterMetric(key string, value int64) error {
 	var id string
 	var prevDelta sql.NullInt64
-	stmtGetDelta := `SELECT name, delta FROM metrics WHERE name = $1 and type = 'counter'`
-	stmtUpdateDelta := `UPDATE metrics SET delta = $1 WHERE name = $2`
-	stmtInsertDelta := `INSERT INTO metrics(name, type, delta) VALUES($1, $2, $3)`
+	stmtGetCounter := `SELECT delta FROM metrics WHERE name = $1 and type = 'counter'`
+	stmtUpdateCounter := `UPDATE metrics SET delta = $1 WHERE name = $2`
+	stmtInsertCounter := `INSERT INTO metrics(name, type, delta) VALUES($1, $2, $3)`
 
-	getDelta := p.db.QueryRow(stmtGetDelta, key)
+	getDelta := p.db.QueryRow(stmtGetCounter, key)
 	err := getDelta.Scan(&id, &prevDelta)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = p.db.Exec(stmtInsertDelta, key, model.MetricTypeCounter, value)
+			_, err = p.db.Exec(stmtInsertCounter, key, model.MetricTypeCounter, value)
 			if err != nil {
 				return err
 			}
@@ -56,21 +58,21 @@ func (p *PostgreDB) SetCounterMetric(key string, value int64) error {
 		}
 	}
 
-	_, err = p.db.Exec(stmtUpdateDelta, prevDelta.Int64+value, id)
+	_, err = p.db.Exec(stmtUpdateCounter, prevDelta.Int64+value, id)
 	return err
 }
 
 func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
-	var id string
-	stmtGetDelta := `SELECT name FROM metrics WHERE name = $1 and type = 'gauge'`
-	stmtUpdateDelta := `UPDATE metrics SET value = $1 WHERE id = $2`
-	stmtInsertDelta := `INSERT INTO metrics(name, type, value) VALUES($1, $2, $3) 
-	ON CONFLICT (name) DO UPDATE SET value = $3 WHERE name = $1`
+	var name string
+	stmtGetGauge := `SELECT name FROM metrics WHERE name = $1 and type = 'gauge'`
+	stmtUpdateGauge := `UPDATE metrics SET value = $1 WHERE name = $2`
+	stmtInsertGauge := `INSERT INTO metrics(name, type, value) VALUES($1, $2, $3) 
+	ON CONFLICT (name) DO UPDATE SET value = $3 WHERE metrics.name = $1`
 
-	getDelta := p.db.QueryRow(stmtGetDelta, key)
-	err := getDelta.Scan(&id)
+	getDelta := p.db.QueryRow(stmtGetGauge, key)
+	err := getDelta.Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = p.db.Exec(stmtInsertDelta, key, model.MetricTypeGauge, value)
+		_, err = p.db.Exec(stmtInsertGauge, key, model.MetricTypeGauge, value)
 		if err != nil {
 			return err
 		}
@@ -79,8 +81,59 @@ func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
 		return err
 	}
 
-	_, err = p.db.Exec(stmtUpdateDelta, value, id)
+	_, err = p.db.Exec(stmtUpdateGauge, value, name)
 	return err
+}
+
+func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
+	stmtGetCounter := `SELECT delta FROM metrics WHERE name = $1 and type = 'counter'`
+
+	upsertGaugeStmt := `INSERT INTO metrics(name, type, value) VALUES($1, $2, $3) 
+	ON CONFLICT (name) DO UPDATE SET value = $3 WHERE metrics.name = $1 `
+
+	upsertCounterStmt := `INSERT INTO metrics(name, type, delta) VALUES($1, $2, $3) 
+	ON CONFLICT (name) DO UPDATE SET delta = $3 WHERE metrics.name = $1`
+
+	tx, err := p.db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, v := range metrics {
+		if v.Mtype == model.MetricTypeCounter {
+			row := tx.QueryRow(stmtGetCounter, v.ID)
+			var delta sql.NullInt64
+
+			err = row.Scan(&delta)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			_, err = tx.Exec(upsertCounterStmt, v.ID, v.Mtype, *v.Delta+delta.Int64)
+			if err != nil {
+				logger.Log.Info("counter error tx", zap.Error(err))
+				err = tx.Rollback()
+				if err != nil {
+					return err
+				}
+				return err
+			}
+
+		} else if v.Mtype == model.MetricTypeGauge {
+			_, err = tx.Exec(upsertGaugeStmt, v.ID, v.Mtype, v.Value)
+			if err != nil {
+				logger.Log.Info("gauge error tx", zap.Error(err))
+				err = tx.Rollback()
+				if err != nil {
+					return err
+				}
+				return err
+			}
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *PostgreDB) GetCounterMetric(key string) (int64, error) {
