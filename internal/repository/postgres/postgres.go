@@ -21,7 +21,7 @@ func New(db *sql.DB) (*PostgreDB, error) {
 		name TEXT PRIMARY KEY,
 		type VARCHAR(50),
 		value DOUBLE PRECISION,
-		delta INTEGER);`)
+		delta BIGINT);`)
 	if err != nil {
 		return nil, err
 	}
