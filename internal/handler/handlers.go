@@ -32,7 +32,7 @@ func NewHandler(s *service.Service) *Handler {
 func Router(h *Handler) chi.Router {
 	r := chi.NewMux()
 
-	r.Use(RequestLogger)
+	// r.Use(RequestLogger)
 	r.Use(Decompresser)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
@@ -102,7 +102,6 @@ func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
-		logger.Log.Info("error retrieving value", zap.String("value", jsonMetric.ID), zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -162,7 +161,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := h.s.Retrieve(&metrics)
 	if err != nil {
-		logger.Log.Debug("error retrieving value", zap.Error(err))
+		logger.Log.Info("error retrieving value", zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -186,6 +185,10 @@ func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	logger.Log.Info("SetAllMetrics", zap.Any("metrics", metrics))
+	if metrics == nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	err = h.s.SaveAll(metrics)
 	if err != nil {
 		serverErrorResponse(w, r, err)

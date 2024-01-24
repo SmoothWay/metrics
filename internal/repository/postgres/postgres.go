@@ -3,6 +3,8 @@ package postgres
 import (
 	"database/sql"
 	"errors"
+	"log"
+	"time"
 
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
@@ -15,8 +17,27 @@ type PostgreDB struct {
 	db *sql.DB
 }
 
-func New(db *sql.DB) (*PostgreDB, error) {
-	stmt, err := db.Prepare(`
+func New(dsn string) (*PostgreDB, error) {
+	var counts int
+	var connection *sql.DB
+	var err error
+	for {
+		connection, err = openDB(dsn)
+		if err != nil {
+			log.Println("Database not ready...")
+			counts++
+		} else {
+			log.Println("Connected to database")
+			break
+		}
+		if counts > 2 {
+			return nil, err
+		}
+		log.Printf("Retrying to connect after %d seconds\n", counts+2)
+		time.Sleep(time.Duration(2+counts) * time.Second)
+	}
+
+	stmtCreateTable, err := connection.Prepare(`
 	CREATE TABLE IF NOT EXISTS metrics (
 		name TEXT PRIMARY KEY,
 		type VARCHAR(50),
@@ -26,40 +47,67 @@ func New(db *sql.DB) (*PostgreDB, error) {
 		return nil, err
 	}
 
-	_, err = stmt.Exec()
+	_, err = stmtCreateTable.Exec()
 	if err != nil {
 		return nil, err
 	}
 
 	return &PostgreDB{
-		db: db,
+		db: connection,
 	}, nil
 }
 
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func (p *PostgreDB) SetCounterMetric(key string, value int64) error {
-	var id string
+	var name string
 	var prevDelta sql.NullInt64
-	stmtGetCounter := `SELECT delta FROM metrics WHERE name = $1 and type = 'counter'`
+	stmtGetCounter := `SELECT name, delta FROM metrics WHERE name = $1 and type = 'counter'`
 	stmtUpdateCounter := `UPDATE metrics SET delta = $1 WHERE name = $2`
 	stmtInsertCounter := `INSERT INTO metrics(name, type, delta) VALUES($1, $2, $3)`
 
-	getDelta := p.db.QueryRow(stmtGetCounter, key)
-	err := getDelta.Scan(&id, &prevDelta)
+	tx, err := p.db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
+	getDelta := tx.QueryRow(stmtGetCounter, key)
+
+	err = getDelta.Scan(&name, &prevDelta)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = p.db.Exec(stmtInsertCounter, key, model.MetricTypeCounter, value)
+			_, err = tx.Exec(stmtInsertCounter, key, model.MetricTypeCounter, value)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
+			tx.Commit()
 			return nil
 		} else {
+			tx.Rollback()
 			return err
 		}
 	}
-
-	_, err = p.db.Exec(stmtUpdateCounter, prevDelta.Int64+value, id)
-	return err
+	updateValue := prevDelta.Int64 + value
+	log.Println(updateValue)
+	_, err = tx.Exec(stmtUpdateCounter, updateValue, name)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
@@ -69,20 +117,33 @@ func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
 	stmtInsertGauge := `INSERT INTO metrics(name, type, value) VALUES($1, $2, $3) 
 	ON CONFLICT (name) DO UPDATE SET value = $3 WHERE metrics.name = $1`
 
+	tx, err := p.db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	getDelta := p.db.QueryRow(stmtGetGauge, key)
-	err := getDelta.Scan(&name)
+	err = getDelta.Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
 		_, err = p.db.Exec(stmtInsertGauge, key, model.MetricTypeGauge, value)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
+		tx.Commit()
 		return nil
 	} else if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	_, err = p.db.Exec(stmtUpdateGauge, value, name)
-	return err
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
@@ -96,6 +157,7 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 
 	tx, err := p.db.Begin()
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	for _, v := range metrics {
@@ -106,15 +168,13 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 
 			err = row.Scan(&delta)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				tx.Rollback()
 				return err
 			}
 			_, err = tx.Exec(upsertCounterStmt, v.ID, v.Mtype, *v.Delta+delta.Int64)
 			if err != nil {
 				logger.Log.Info("counter error tx", zap.Error(err))
-				err = tx.Rollback()
-				if err != nil {
-					return err
-				}
+				tx.Rollback()
 				return err
 			}
 
@@ -122,18 +182,12 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 			_, err = tx.Exec(upsertGaugeStmt, v.ID, v.Mtype, v.Value)
 			if err != nil {
 				logger.Log.Info("gauge error tx", zap.Error(err))
-				err = tx.Rollback()
-				if err != nil {
-					return err
-				}
+				tx.Rollback()
 				return err
 			}
 		}
 	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
+	tx.Commit()
 	return nil
 }
 
@@ -172,9 +226,14 @@ func (p *PostgreDB) GetGaugeMetric(key string) (float64, error) {
 
 func (p *PostgreDB) GetAllMetric() []model.Metrics {
 	selectStmt := `SELECT name, type, delta, value FROM metrics`
-
+	tx, err := p.db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return nil
+	}
 	rows, err := p.db.Query(selectStmt)
 	if err != nil {
+		tx.Rollback()
 		return nil
 	}
 
@@ -185,6 +244,7 @@ func (p *PostgreDB) GetAllMetric() []model.Metrics {
 
 		err = rows.Scan(metric.ID, metric.Mtype, metric.Delta, metric.Value)
 		if err != nil {
+			tx.Rollback()
 			return nil
 		}
 
@@ -192,8 +252,9 @@ func (p *PostgreDB) GetAllMetric() []model.Metrics {
 	}
 
 	if rows.Err() != nil {
+		tx.Rollback()
 		return nil
 	}
-
+	tx.Commit()
 	return metrics
 }

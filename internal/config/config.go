@@ -82,11 +82,7 @@ func NewServerConfig() *ServerConfig {
 	}
 
 	if config.DSN != "" {
-		dbConn, err = sql.Open("pgx", config.DSN)
-		if err != nil {
-			log.Fatal("failed to open db connection", zap.Error(err))
-		}
-		repo, err = postgres.New(dbConn)
+		repo, err = postgres.New(config.DSN)
 		if err != nil {
 			log.Fatal("error init postgres:", err)
 		}
