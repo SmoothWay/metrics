@@ -79,7 +79,7 @@ func Restore(FilePath string) (*[]model.Metrics, error) {
 
 func (b *BackupConfig) saveTofile(m []model.Metrics) error {
 
-	logger.Log.Info("writing to file", zap.Any("bytes", m))
+	logger.Log.Info("writing to file", zap.Int("num of metrics", len(m)))
 	file, err := os.OpenFile(b.FilePath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err

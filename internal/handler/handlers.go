@@ -178,7 +178,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics := make([]model.Metrics, 1)
+	var metrics []model.Metrics
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
 		badRequestResponse(w, r, err)

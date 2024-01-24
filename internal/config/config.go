@@ -133,7 +133,7 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.DSN, "d", "", "DB connection string")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
-	flag.Int64Var(&config.StoreInvterval, "i", 300, "interval of storing metrics")
+	flag.Int64Var(&config.StoreInvterval, "i", 2, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", true, "store metrics in file")
 	flag.Parse()
 

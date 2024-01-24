@@ -24,7 +24,8 @@ func New(metrics *[]model.Metrics) *MemStorage {
 	if metrics != nil {
 		for _, v := range *metrics {
 			if v.Mtype == model.MetricTypeCounter {
-				counter[v.ID] = *v.Delta
+				counterValue := counter[v.ID]
+				counter[v.ID] = *v.Delta + counterValue
 			} else if v.Mtype == model.MetricTypeGauge {
 				gauge[v.ID] = *v.Value
 			}
@@ -78,11 +79,20 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 }
 
 func (ms *MemStorage) SetAllMetrics(metrics []model.Metrics) error {
+
 	for _, v := range metrics {
+		v := v
 		if v.Mtype == model.MetricTypeCounter {
-			ms.Counter[v.ID] += *v.Delta
+
+			err := ms.SetCounterMetric(v.ID, *v.Delta)
+			if err != nil {
+				return err
+			}
 		} else if v.Mtype == model.MetricTypeGauge {
-			ms.Gauge[v.ID] = *v.Value
+			err := ms.SetGaugeMetric(v.ID, *v.Value)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -95,12 +105,16 @@ func (ms *MemStorage) GetAllMetric() []model.Metrics {
 	metrics := make([]model.Metrics, lenMetrics)
 	i := 0
 	for k, v := range ms.Counter {
+		k := k
+		v := v
 		metrics[i].ID = k
 		metrics[i].Mtype = model.MetricTypeCounter
 		metrics[i].Delta = &v
 		i++
 	}
 	for k, v := range ms.Gauge {
+		k := k
+		v := v
 		metrics[i].ID = k
 		metrics[i].Mtype = model.MetricTypeGauge
 		metrics[i].Value = &v
