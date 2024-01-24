@@ -99,6 +99,7 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 		return err
 	}
 	for _, v := range metrics {
+		v := v
 		if v.Mtype == model.MetricTypeCounter {
 			row := tx.QueryRow(stmtGetCounter, v.ID)
 			var delta sql.NullInt64
