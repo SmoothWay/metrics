@@ -1,7 +1,6 @@
 package config
 
 import (
-	"database/sql"
 	"errors"
 	"flag"
 	"log"
@@ -66,7 +65,6 @@ func NewServerConfig() *ServerConfig {
 		config.Restore = flagConfig.Restore
 	}
 	var repo service.Repository
-	var dbConn *sql.DB
 	var metrics *[]model.Metrics
 	if config.Restore {
 
@@ -89,7 +87,7 @@ func NewServerConfig() *ServerConfig {
 	} else {
 		repo = memstorage.New(metrics)
 	}
-	serv := service.New(repo, dbConn)
+	serv := service.New(repo)
 
 	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
 	if err != nil {

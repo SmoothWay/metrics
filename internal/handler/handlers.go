@@ -49,7 +49,7 @@ func Router(h *Handler) chi.Router {
 }
 
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
-	err := h.s.DB.Ping()
+	err := h.s.PingStorage()
 	if err != nil {
 		logger.Log.Info("error pinging DB", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)

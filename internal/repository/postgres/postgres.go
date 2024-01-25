@@ -258,3 +258,8 @@ func (p *PostgreDB) GetAllMetric() []model.Metrics {
 	tx.Commit()
 	return metrics
 }
+
+func (p *PostgreDB) PingStorage() error {
+	err := p.db.Ping()
+	return err
+}

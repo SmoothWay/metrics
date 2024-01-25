@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"errors"
 
 	"github.com/SmoothWay/metrics/internal/model"
@@ -19,7 +18,6 @@ var (
 
 type Service struct {
 	repo Repository
-	DB   *sql.DB
 }
 
 type Repository interface {
@@ -29,10 +27,11 @@ type Repository interface {
 	SetAllMetrics([]model.Metrics) error
 	SetCounterMetric(string, int64) error
 	SetGaugeMetric(string, float64) error
+	PingStorage() error
 }
 
-func New(repo Repository, db *sql.DB) *Service {
-	return &Service{repo: repo, DB: db}
+func New(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
 func (s *Service) SaveAll(metrics []model.Metrics) error {
@@ -77,4 +76,8 @@ func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
 
 func (s *Service) GetAll() []model.Metrics {
 	return s.repo.GetAllMetric()
+}
+
+func (s *Service) PingStorage() error {
+	return s.repo.PingStorage()
 }

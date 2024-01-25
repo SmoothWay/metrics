@@ -122,3 +122,7 @@ func (ms *MemStorage) GetAllMetric() []model.Metrics {
 	}
 	return metrics
 }
+
+func (ms *MemStorage) PingStorage() error {
+	return nil
+}
