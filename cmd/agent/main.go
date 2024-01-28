@@ -19,7 +19,9 @@ import (
 
 func main() {
 
+	numRetries := 3
 	config := config.NewAgentConfig()
+
 	var metrics []model.Metrics
 
 	err := logger.Init("info")
@@ -35,6 +37,7 @@ func main() {
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
+	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -43,11 +46,14 @@ func main() {
 		select {
 
 		case <-poll.C:
-			metrics = agent.UpdateMetrics()
+			a.UpdateMetrics()
 			logger.Log.Info("metrics updated")
 
 		case <-report.C:
-			if err := agent.ReportMetrics(ctx, client, config.Host, metrics); err != nil {
+			err := a.Retry(ctx, numRetries, func(context.Context, []model.Metrics) error {
+				return a.ReportAllMetricsAtOnes(ctx)
+			})
+			if err != nil {
 				logger.Log.Error("error sending metrics", zap.Error(err))
 			} else {
 				logger.Log.Info("metrics send")

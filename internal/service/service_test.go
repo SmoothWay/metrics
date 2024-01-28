@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/repository/memstorage"
 )
 
 func TestService_Save(t *testing.T) {
@@ -57,7 +57,7 @@ func TestService_Save(t *testing.T) {
 		},
 	}
 	s := &Service{
-		repo: repository.New(),
+		repo: memstorage.New(nil),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestService_Retrieve(t *testing.T) {
 	}
 
 	s := &Service{
-		repo: repository.New(),
+		repo: memstorage.New(nil),
 	}
 
 	for _, smv := range saveMetric {

@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
@@ -20,12 +22,48 @@ import (
 
 var counter int64
 
-func ReportMetrics(ctx context.Context, client *http.Client, host string, metrics []model.Metrics) error {
+type Agent struct {
+	Host    string
+	Client  *http.Client
+	Metrics []model.Metrics
+}
+
+func (a *Agent) ReportAllMetricsAtOnes(ctx context.Context) error {
+	jsonMetric, err := json.Marshal(a.Metrics)
+	if err != nil {
+		return err
+	}
+	cJSONMetric, err := compressData(jsonMetric)
+	if err != nil {
+		return err
+	}
+
+	endpoint := fmt.Sprintf("http://%s/updates/", a.Host)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJSONMetric)
+	if err != nil {
+		return err
+	}
+
+	req.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+
+	res, err := a.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	return nil
+
+}
+
+func (a *Agent) ReportMetrics(ctx context.Context) error {
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(metrics))
+	errChan := make(chan error, len(a.Metrics))
 
-	for _, m := range metrics {
+	for _, m := range a.Metrics {
 		m := m
 		wg.Add(1)
 
@@ -43,9 +81,8 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 				return
 			}
 
-			endpoint := fmt.Sprintf("http://%s/update/", host)
+			endpoint := fmt.Sprintf("http://%s/update/", a.Host)
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, cJSONMetric)
-
 			if err != nil {
 				errChan <- err
 				return
@@ -56,7 +93,7 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Content-Encoding", "gzip")
 
-			res, err := client.Do(req)
+			res, err := a.Client.Do(req)
 			if err != nil {
 				errChan <- err
 				return
@@ -84,7 +121,7 @@ func ReportMetrics(ctx context.Context, client *http.Client, host string, metric
 
 }
 
-func UpdateMetrics() []model.Metrics {
+func (a *Agent) UpdateMetrics() {
 	var metrics []model.Metrics
 	var MemStats runtime.MemStats
 
@@ -109,8 +146,8 @@ func UpdateMetrics() []model.Metrics {
 		case float64:
 			value = msValue.FieldByName(metric).Interface().(float64)
 		default:
-			return nil
-
+			log.Println("got default value", msValue.FieldByName(metric).Interface())
+			return
 		}
 
 		metrics = append(metrics, model.Metrics{ID: field.Name, Mtype: "gauge", Value: &value})
@@ -122,7 +159,32 @@ func UpdateMetrics() []model.Metrics {
 	metrics = append(metrics, model.Metrics{ID: "RandomValue", Mtype: "gauge", Value: &randValue})
 	metrics = append(metrics, model.Metrics{ID: "PollCount", Mtype: "counter", Delta: &counter})
 
-	return metrics
+	a.Metrics = metrics
+
+}
+
+func (a *Agent) Retry(ctx context.Context, numRetry int, fn func(ctx context.Context, metrics []model.Metrics) error) error {
+	err := fn(ctx, a.Metrics)
+	if err == nil {
+		return nil
+	}
+
+	for i := 1; i <= numRetry; i++ {
+		logger.Log.Info("Retry", zap.Int("Retrying...", i))
+
+		retryTicker := time.NewTicker(time.Duration(i+2) * time.Second)
+
+		select {
+		case <-retryTicker.C:
+			if err := fn(ctx, a.Metrics); err == nil {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	logger.Log.Info("Retry", zap.String("Retrying", "Failed"))
+	return err
 }
 
 func compressData(data []byte) (io.Reader, error) {

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/SmoothWay/metrics/internal/logger"
-	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/SmoothWay/metrics/internal/service"
 	"go.uber.org/zap"
 )
@@ -33,14 +33,24 @@ func New(interval int64, path string, serv *service.Service) (*BackupConfig, err
 func (b *BackupConfig) Backup(ctx context.Context) error {
 	backupInterval := time.NewTicker(time.Duration(b.Interval) * time.Second)
 	for {
-		metrics := b.s.GetAll()
+
 		select {
 		case <-backupInterval.C:
+			metrics := b.s.GetAll()
+
+			if len(metrics) == 0 {
+				continue
+			}
 			err := b.saveTofile(metrics)
 			if err != nil {
 				return err
 			}
 		case <-ctx.Done():
+			metrics := b.s.GetAll()
+
+			if len(metrics) == 0 {
+				return nil
+			}
 			err := b.saveTofile(metrics)
 			return err
 		}
@@ -48,26 +58,28 @@ func (b *BackupConfig) Backup(ctx context.Context) error {
 	}
 }
 
-var ErrRestoreFromJSON = errors.New("error restoring from JSON")
+var ErrRestoreFromFile = errors.New("error restoring from file")
 
-func Restore(FilePath string) (*repository.MemStorage, error) {
+func Restore(FilePath string) (*[]model.Metrics, error) {
 	file, err := os.OpenFile(FilePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		logger.Log.Error("Error opening file", zap.Error(err))
+		log.Println("error opening file", err)
 		return nil, err
 	}
-	m := repository.New()
-	if err := json.NewDecoder(file).Decode(m); err != nil {
-		logger.Log.Error("Error by decode metrics from json", zap.Error(err))
-		return m, ErrRestoreFromJSON
+	metrics := make([]model.Metrics, 0)
+
+	if err := json.NewDecoder(file).Decode(&metrics); err != nil {
+		log.Println("error by decode metrics from json", err)
+		return &metrics, ErrRestoreFromFile
 	}
-	log.Printf("restored from file: %+v\n", m)
-	return m, nil
+
+	log.Println("restored metrics from file")
+	return &metrics, nil
 }
 
-func (b *BackupConfig) saveTofile(m *repository.MemStorage) error {
+func (b *BackupConfig) saveTofile(m []model.Metrics) error {
 
-	logger.Log.Info("writing to file", zap.Any("bytes", m))
+	logger.Log.Info("writing to file", zap.Int("num of metrics", len(m)))
 	file, err := os.OpenFile(b.FilePath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err

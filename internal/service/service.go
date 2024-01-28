@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/SmoothWay/metrics/internal/repository"
 )
 
 const (
@@ -22,15 +21,25 @@ type Service struct {
 }
 
 type Repository interface {
-	GetAllMetric() *repository.MemStorage
+	GetAllMetric() []model.Metrics
 	GetCounterMetric(string) (int64, error)
 	GetGaugeMetric(string) (float64, error)
+	SetAllMetrics([]model.Metrics) error
 	SetCounterMetric(string, int64) error
 	SetGaugeMetric(string, float64) error
+	PingStorage() error
 }
 
 func New(repo Repository) *Service {
 	return &Service{repo: repo}
+}
+
+func (s *Service) SaveAll(metrics []model.Metrics) error {
+	err := s.repo.SetAllMetrics(metrics)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) Save(jsonMetric model.Metrics) error {
@@ -65,6 +74,10 @@ func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
 	return nil
 }
 
-func (s *Service) GetAll() *repository.MemStorage {
+func (s *Service) GetAll() []model.Metrics {
 	return s.repo.GetAllMetric()
+}
+
+func (s *Service) PingStorage() error {
+	return s.repo.PingStorage()
 }

@@ -27,21 +27,20 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Write(js)
 }
 
-func errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
+func errorResponse(w http.ResponseWriter, r *http.Request, status int, err error, message any) {
 	env := envelope{"error": message}
-	logger.Log.Error("error in incoming request", zap.Int("status", status), zap.String("url", r.URL.String()))
+	logger.Log.Error("error handling request", zap.Int("status", status), zap.String("url", r.URL.String()), zap.Error(err))
 
 	writeJSON(w, status, env)
 }
 func badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
-	errorResponse(w, r, http.StatusBadRequest, err.Error())
+	message := "bad request"
+	errorResponse(w, r, http.StatusBadRequest, err, message)
 }
 
 func serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	logger.Log.Error("error in incoming request", zap.Error(err))
-
 	message := "the server encountered a problem and could not process your request"
-	errorResponse(w, r, http.StatusInternalServerError, message)
+	errorResponse(w, r, http.StatusInternalServerError, err, message)
 }
 
 func notFoundResponse(w http.ResponseWriter, r *http.Request) {

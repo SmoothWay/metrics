@@ -12,6 +12,10 @@ import (
 )
 
 func Test_updateMetrics(t *testing.T) {
+
+	a := Agent{
+		Metrics: make([]model.Metrics, 0),
+	}
 	tests := []struct {
 		name     string
 		field    string
@@ -22,11 +26,11 @@ func Test_updateMetrics(t *testing.T) {
 		{name: "alloc", field: "Alloc", wantType: "gauge"},
 		{name: "counter", field: "PollCount", wantType: "counter"},
 	}
-	metrics := UpdateMetrics()
+	a.UpdateMetrics()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			found := false // Flag to track if tt.field is found in metrics
-			for _, metric := range metrics {
+			for _, metric := range a.Metrics {
 
 				if metric.ID == tt.field {
 					assert.Equal(t, metric.Mtype, tt.wantType)
@@ -46,7 +50,7 @@ func Test_reportMetrics(t *testing.T) {
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
-	host := "localhost:8080"
+
 	type args struct {
 		metrics []model.Metrics
 	}
@@ -57,10 +61,16 @@ func Test_reportMetrics(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
+
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReportMetrics(ctx, client, host, tt.args.metrics); (err != nil) != tt.wantErr {
+			a := Agent{
+				Host:    "localhost:8080",
+				Client:  client,
+				Metrics: tt.args.metrics,
+			}
+			if err := a.ReportMetrics(ctx); (err != nil) != tt.wantErr {
 				t.Errorf("reportMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

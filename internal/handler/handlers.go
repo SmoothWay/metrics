@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"strconv"
@@ -29,18 +32,30 @@ func NewHandler(s *service.Service) *Handler {
 func Router(h *Handler) chi.Router {
 	r := chi.NewMux()
 
-	r.Use(RequestLogger)
+	// r.Use(RequestLogger)
 	r.Use(Decompresser)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 
 	r.Get("/", h.GetAllHanler)
+	r.Get("/ping", h.PingHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetHandler)
 	r.Post("/value/", h.JSONGetHandler)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
 	r.Post("/update/", h.JSONUpdateHandler)
+	r.Post("/updates/", h.SetAllMetrics)
 
 	return r
+}
+
+func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
+	err := h.s.PingStorage()
+	if err != nil {
+		logger.Log.Info("error pinging DB", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +69,7 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		badRequestResponse(w, r, err)
 		return
 	}
-
+	logger.Log.Info("jsonMetric", zap.Any("jsonMetric", jsonMetric))
 	err = h.s.Save(jsonMetric)
 	if err != nil {
 		badRequestResponse(w, r, err)
@@ -63,6 +78,10 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			notFoundResponse(w, r)
+			return
+		}
 		serverErrorResponse(w, r, err)
 		return
 	}
@@ -83,7 +102,6 @@ func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.s.Retrieve(&jsonMetric)
 	if err != nil {
-		logger.Log.Debug("error retrieving value", zap.String("value", jsonMetric.ID), zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -122,6 +140,10 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.s.Save(metrics); err != nil {
+		if err == sql.ErrNoRows {
+			notFoundResponse(w, r)
+			return
+		}
 		badRequestResponse(w, r, err)
 		return
 	}
@@ -139,7 +161,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := h.s.Retrieve(&metrics)
 	if err != nil {
-		logger.Log.Debug("error retrieving value", zap.Error(err))
+		logger.Log.Info("error retrieving value", zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -154,9 +176,41 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, result)
 }
 
+func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	var metrics []model.Metrics
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		badRequestResponse(w, r, err)
+		return
+	}
+	defer r.Body.Close()
+	logger.Log.Info("SetAllMetrics", zap.Any("metrics", metrics))
+	if metrics == nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	err = h.s.SaveAll(metrics)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) GetAllHanler(w http.ResponseWriter, r *http.Request) {
 	metrics := h.s.GetAll()
 
+	tmpl, err := template.New("metrics").Parse(model.HTMLTemplate)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+	buf := bytes.Buffer{}
+	if err = tmpl.Execute(&buf, metrics); err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(metrics.ToString()))
+	w.Write(buf.Bytes())
 }

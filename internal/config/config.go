@@ -6,11 +6,14 @@ import (
 	"log"
 
 	"github.com/caarlos0/env/v6"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
 	"github.com/SmoothWay/metrics/internal/backup"
 	"github.com/SmoothWay/metrics/internal/handler"
-	"github.com/SmoothWay/metrics/internal/repository"
+	"github.com/SmoothWay/metrics/internal/model"
+	"github.com/SmoothWay/metrics/internal/repository/memstorage"
+	"github.com/SmoothWay/metrics/internal/repository/postgres"
 	"github.com/SmoothWay/metrics/internal/service"
 )
 
@@ -23,6 +26,7 @@ type AgentConfig struct {
 
 type ServerConfig struct {
 	Host           string `env:"ADDRESS"`
+	DSN            string `env:"DATABASE_DSN"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	StoragePath    string `env:"STORAGE_PATH"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
@@ -41,6 +45,10 @@ func NewServerConfig() *ServerConfig {
 		config.Host = flagConfig.Host
 	}
 
+	if config.DSN == "" {
+		config.DSN = flagConfig.DSN
+	}
+
 	if config.LogLevel == "" {
 		config.LogLevel = flagConfig.LogLevel
 	}
@@ -56,17 +64,28 @@ func NewServerConfig() *ServerConfig {
 	if !config.Restore {
 		config.Restore = flagConfig.Restore
 	}
-	repo := repository.New()
-
+	var repo service.Repository
+	var metrics *[]model.Metrics
 	if config.Restore {
-		repo, err = backup.Restore(config.StoragePath)
+
+		var err error
+		metrics, err = backup.Restore(config.StoragePath)
 		if err != nil {
-			if errors.Is(backup.ErrRestoreFromJSON, err) {
+			if errors.Is(backup.ErrRestoreFromFile, err) {
 				log.Println("cant restore from json")
 			} else {
 				log.Fatal("unexpected err restoring from json", zap.Error(err))
 			}
 		}
+	}
+
+	if config.DSN != "" {
+		repo, err = postgres.New(config.DSN)
+		if err != nil {
+			log.Fatal("error init postgres:", err)
+		}
+	} else {
+		repo = memstorage.New(metrics)
 	}
 	serv := service.New(repo)
 
@@ -74,6 +93,7 @@ func NewServerConfig() *ServerConfig {
 	if err != nil {
 		log.Fatal("err creating backupper", zap.Error(err))
 	}
+
 	config.H = handler.NewHandler(serv)
 
 	return config
@@ -104,9 +124,10 @@ func NewAgentConfig() *AgentConfig {
 func parseServerFlags() *ServerConfig {
 	config := &ServerConfig{}
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server host")
+	flag.StringVar(&config.DSN, "d", "", "DB connection string")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
-	flag.Int64Var(&config.StoreInvterval, "i", 300, "interval of storing metrics")
+	flag.Int64Var(&config.StoreInvterval, "i", 2, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", true, "store metrics in file")
 	flag.Parse()
 
