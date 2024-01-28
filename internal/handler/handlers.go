@@ -29,11 +29,13 @@ func NewHandler(s *service.Service) *Handler {
 		s: s,
 	}
 }
-func Router(h *Handler) chi.Router {
+func Router(h *Handler, hash string) chi.Router {
 	r := chi.NewMux()
+	mw := NewMiddleware(hash)
 
-	// r.Use(RequestLogger)
-	r.Use(Decompresser)
+	r.Use(mw.requestLogger)
+	r.Use(mw.decompresser)
+	r.Use(mw.checkHash)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 
@@ -184,16 +186,20 @@ func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+
 	logger.Log.Info("SetAllMetrics", zap.Any("metrics", metrics))
+
 	if metrics == nil {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
 	err = h.s.SaveAll(metrics)
 	if err != nil {
 		serverErrorResponse(w, r, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 }
 

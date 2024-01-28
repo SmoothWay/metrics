@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +27,7 @@ var counter int64
 
 type Agent struct {
 	Host    string
+	Key     string
 	Client  *http.Client
 	Metrics []model.Metrics
 }
@@ -43,8 +47,19 @@ func (a *Agent) ReportAllMetricsAtOnes(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer req.Body.Close()
 
-	req.Body.Close()
+	if a.Key != "" {
+
+		h := hmac.New(sha256.New, []byte(a.Key))
+
+		h.Write(jsonMetric)
+		metricsHash := h.Sum(nil)
+
+		hashString := hex.EncodeToString(metricsHash)
+
+		req.Header.Add("HashSHA256", string(hashString))
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
@@ -205,6 +220,5 @@ func compressData(data []byte) (io.Reader, error) {
 		logger.Log.Error("error closing writer", zap.Error(err))
 		return nil, err
 	}
-
 	return b, nil
 }

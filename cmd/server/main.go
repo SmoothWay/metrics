@@ -37,7 +37,7 @@ func main() {
 			os.Exit(0)
 		}()
 	}
-	err = http.ListenAndServe(cfg.Host, handler.Router(cfg.H))
+	err = http.ListenAndServe(cfg.Host, handler.Router(cfg.H, cfg.Key))
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}

@@ -37,7 +37,8 @@ func main() {
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
-	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host}
+
+	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()

@@ -18,7 +18,7 @@ func TestHandler_UpdateHandler(t *testing.T) {
 	service := service.New(repo)
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h))
+	ts := httptest.NewServer(Router(h, ""))
 	defer ts.Close()
 
 	tests := []struct {
