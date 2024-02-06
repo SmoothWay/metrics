@@ -71,7 +71,7 @@ func (mw *Middleware) requestLogger(next http.Handler) http.Handler {
 		}
 		duration := time.Since(start)
 		next.ServeHTTP(&lw, r)
-		logger.Log.Info("incomming request",
+		logger.Log().Info("incomming request",
 			zap.String("uri", uri),
 			zap.String("method", r.Method),
 			zap.Duration("duration", duration),

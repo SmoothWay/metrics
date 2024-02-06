@@ -21,7 +21,8 @@ type AgentConfig struct {
 	Host           string `env:"ADDRESS"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	Key            string `env:"KEY"`
-	PollInterval   int    `env:"REPORT_INTERVAL"`
+	RateLimit      int    `env:"RATE_LIMIT`
+	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 }
 
@@ -113,18 +114,26 @@ func NewAgentConfig() *AgentConfig {
 	Agentconfig := &AgentConfig{}
 	env.Parse(Agentconfig)
 
-	if Agentconfig.Host == "" {
-		Agentconfig.Host = flagAgentConfig.Host
+	if Agentconfig.RateLimit == 0 {
+		Agentconfig.RateLimit = flagAgentConfig.RateLimit
 	}
+
 	if Agentconfig.PollInterval == 0 {
 		Agentconfig.PollInterval = flagAgentConfig.PollInterval
 	}
+
 	if Agentconfig.ReportInterval == 0 {
 		Agentconfig.ReportInterval = flagAgentConfig.ReportInterval
 	}
+
+	if Agentconfig.Host == "" {
+		Agentconfig.Host = flagAgentConfig.Host
+	}
+
 	if Agentconfig.LogLevel == "" {
 		Agentconfig.LogLevel = flagAgentConfig.LogLevel
 	}
+
 	if Agentconfig.Key == "" {
 		Agentconfig.Key = flagAgentConfig.Key
 	}

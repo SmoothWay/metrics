@@ -173,7 +173,7 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 			}
 			_, err = tx.Exec(upsertCounterStmt, v.ID, v.Mtype, *v.Delta+delta.Int64)
 			if err != nil {
-				logger.Log.Info("counter error tx", zap.Error(err))
+				logger.Log().Info("counter error tx", zap.Error(err))
 				tx.Rollback()
 				return err
 			}
@@ -181,7 +181,7 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 		} else if v.Mtype == model.MetricTypeGauge {
 			_, err = tx.Exec(upsertGaugeStmt, v.ID, v.Mtype, v.Value)
 			if err != nil {
-				logger.Log.Info("gauge error tx", zap.Error(err))
+				logger.Log().Info("gauge error tx", zap.Error(err))
 				tx.Rollback()
 				return err
 			}
