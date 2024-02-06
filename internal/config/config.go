@@ -21,7 +21,7 @@ type AgentConfig struct {
 	Host           string `env:"ADDRESS"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	Key            string `env:"KEY"`
-	RateLimit      int    `env:"RATE_LIMIT`
+	RateLimit      int    `env:"RATE_LIMIT"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 }
