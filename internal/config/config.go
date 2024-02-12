@@ -20,7 +20,9 @@ import (
 type AgentConfig struct {
 	Host           string `env:"ADDRESS"`
 	LogLevel       string `env:"LOG_LEVEL"`
-	PollInterval   int    `env:"REPORT_INTERVAL"`
+	Key            string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 }
 
@@ -29,6 +31,7 @@ type ServerConfig struct {
 	DSN            string `env:"DATABASE_DSN"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	StoragePath    string `env:"STORAGE_PATH"`
+	Key            string `env:"KEY"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
 	Restore        bool   `env:"RESTORE"`
 	B              *backup.BackupConfig
@@ -61,11 +64,17 @@ func NewServerConfig() *ServerConfig {
 		config.StoragePath = flagConfig.StoragePath
 	}
 
+	if config.Key == "" {
+		config.Key = flagConfig.Key
+	}
+
 	if !config.Restore {
 		config.Restore = flagConfig.Restore
 	}
+
 	var repo service.Repository
 	var metrics *[]model.Metrics
+
 	if config.Restore {
 
 		var err error
@@ -105,17 +114,28 @@ func NewAgentConfig() *AgentConfig {
 	Agentconfig := &AgentConfig{}
 	env.Parse(Agentconfig)
 
-	if Agentconfig.Host == "" {
-		Agentconfig.Host = flagAgentConfig.Host
+	if Agentconfig.RateLimit == 0 {
+		Agentconfig.RateLimit = flagAgentConfig.RateLimit
 	}
+
 	if Agentconfig.PollInterval == 0 {
 		Agentconfig.PollInterval = flagAgentConfig.PollInterval
 	}
+
 	if Agentconfig.ReportInterval == 0 {
 		Agentconfig.ReportInterval = flagAgentConfig.ReportInterval
 	}
+
+	if Agentconfig.Host == "" {
+		Agentconfig.Host = flagAgentConfig.Host
+	}
+
 	if Agentconfig.LogLevel == "" {
 		Agentconfig.LogLevel = flagAgentConfig.LogLevel
+	}
+
+	if Agentconfig.Key == "" {
+		Agentconfig.Key = flagAgentConfig.Key
 	}
 
 	return Agentconfig
@@ -127,8 +147,10 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.DSN, "d", "", "DB connection string")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
+	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
 	flag.Int64Var(&config.StoreInvterval, "i", 2, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", true, "store metrics in file")
+
 	flag.Parse()
 
 	return config
@@ -140,7 +162,7 @@ func parseAgentFlags() *AgentConfig {
 	flag.IntVar(&config.PollInterval, "p", 2, "polling interval")
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server address")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
-
+	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
 	flag.Parse()
 
 	return config

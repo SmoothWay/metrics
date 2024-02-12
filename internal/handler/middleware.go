@@ -1,7 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"strings"
@@ -14,6 +18,16 @@ import (
 type responseData struct {
 	status int
 	size   int
+}
+
+type Middleware struct {
+	HashSecretKey string
+}
+
+func NewMiddleware(hash string) *Middleware {
+	return &Middleware{
+		HashSecretKey: hash,
+	}
 }
 
 type loggingResponseWriter struct {
@@ -41,7 +55,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func RequestLogger(next http.Handler) http.Handler {
+func (mw *Middleware) requestLogger(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -57,7 +71,7 @@ func RequestLogger(next http.Handler) http.Handler {
 		}
 		duration := time.Since(start)
 		next.ServeHTTP(&lw, r)
-		logger.Log.Info("incomming request",
+		logger.Log().Info("incomming request",
 			zap.String("uri", uri),
 			zap.String("method", r.Method),
 			zap.Duration("duration", duration),
@@ -68,7 +82,7 @@ func RequestLogger(next http.Handler) http.Handler {
 	})
 }
 
-func Decompresser(next http.Handler) http.Handler {
+func (mw *Middleware) decompresser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
@@ -88,6 +102,33 @@ func Decompresser(next http.Handler) http.Handler {
 			defer gzipWriter.Close()
 			w = gzipResponseWriter{Writer: gzipWriter, ResponseWriter: w}
 			w.Header().Set("Content-Encoding", "gzip")
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (mw *Middleware) checkHash(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("HashSHA256") != "" {
+			jsonMetric, err := io.ReadAll(r.Body)
+			if err != nil {
+				badRequestResponse(w, r, err)
+				return
+			}
+
+			r.Body = io.NopCloser(bytes.NewBuffer(jsonMetric))
+			h := hmac.New(sha256.New, []byte(mw.HashSecretKey))
+
+			h.Write(jsonMetric)
+			metricsHash := h.Sum(nil)
+
+			strHash := hex.EncodeToString(metricsHash)
+
+			if strHash != r.Header.Get("HashSHA256") {
+				badRequestResponse(w, r, err)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)

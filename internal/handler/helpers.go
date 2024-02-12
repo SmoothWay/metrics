@@ -29,7 +29,7 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 
 func errorResponse(w http.ResponseWriter, r *http.Request, status int, err error, message any) {
 	env := envelope{"error": message}
-	logger.Log.Error("error handling request", zap.Int("status", status), zap.String("url", r.URL.String()), zap.Error(err))
+	logger.Log().Error("error handling request", zap.Int("status", status), zap.String("url", r.URL.String()), zap.Error(err))
 
 	writeJSON(w, status, env)
 }

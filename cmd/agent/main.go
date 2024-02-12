@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -19,7 +18,6 @@ import (
 
 func main() {
 
-	numRetries := 3
 	config := config.NewAgentConfig()
 
 	var metrics []model.Metrics
@@ -29,41 +27,51 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger.Log.Info("Starting agent...")
-
-	poll := time.NewTicker(time.Duration(config.PollInterval) * time.Second)
-	report := time.NewTicker(time.Duration(config.ReportInterval) * time.Second)
+	logger.Log().Info("Starting agent...")
 
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
-	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host}
+
+	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
+	run(ctx, a, *config)
+}
+
+func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
+
+	poll := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+	report := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+
+	defer poll.Stop()
+	defer report.Stop()
+
+	jobs := make(chan []model.Metrics, cfg.RateLimit)
+	errs := make(chan error)
+
+	defer close(jobs)
+	defer close(errs)
+
+	for i := 0; i < cfg.RateLimit; i++ {
+		go a.Worker(ctx, i+1, jobs, errs)
+	}
+
 	for {
 		select {
-
 		case <-poll.C:
-			a.UpdateMetrics()
-			logger.Log.Info("metrics updated")
-
+			go a.CollecMemMetrics()
+			go a.CollectPSutilMetrics(ctx, errs)
 		case <-report.C:
-			err := a.Retry(ctx, numRetries, func(context.Context, []model.Metrics) error {
-				return a.ReportAllMetricsAtOnes(ctx)
-			})
-			if err != nil {
-				logger.Log.Error("error sending metrics", zap.Error(err))
-			} else {
-				logger.Log.Info("metrics send")
-			}
-
+			go a.ReportAllMetricsAtOnes(jobs)
 		case <-ctx.Done():
-			logger.Log.Info("shutting down agent...")
-			poll.Stop()
-			report.Stop()
-			os.Exit(0)
+			logger.Log().Info("shutting down agent...")
+			return
+		case err := <-errs:
+			logger.Log().Error("encountered error", zap.Error(err))
+			return
 		}
 	}
 }

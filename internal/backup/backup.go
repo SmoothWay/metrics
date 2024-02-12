@@ -79,14 +79,14 @@ func Restore(FilePath string) (*[]model.Metrics, error) {
 
 func (b *BackupConfig) saveTofile(m []model.Metrics) error {
 
-	logger.Log.Info("writing to file", zap.Int("num of metrics", len(m)))
+	logger.Log().Info("writing to file", zap.Int("num of metrics", len(m)))
 	file, err := os.OpenFile(b.FilePath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 	if err := json.NewEncoder(file).Encode(m); err != nil {
-		logger.Log.Error("Error by encode metrics to json", zap.Error(err))
+		logger.Log().Error("Error by encode metrics to json", zap.Error(err))
 		return err
 	}
 	return nil

@@ -29,11 +29,13 @@ func NewHandler(s *service.Service) *Handler {
 		s: s,
 	}
 }
-func Router(h *Handler) chi.Router {
+func Router(h *Handler, hash string) chi.Router {
 	r := chi.NewMux()
+	mw := NewMiddleware(hash)
 
-	// r.Use(RequestLogger)
-	r.Use(Decompresser)
+	r.Use(mw.requestLogger)
+	r.Use(mw.decompresser)
+	r.Use(mw.checkHash)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 
@@ -51,7 +53,7 @@ func Router(h *Handler) chi.Router {
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	err := h.s.PingStorage()
 	if err != nil {
-		logger.Log.Info("error pinging DB", zap.Error(err))
+		logger.Log().Info("error pinging DB", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +71,7 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		badRequestResponse(w, r, err)
 		return
 	}
-	logger.Log.Info("jsonMetric", zap.Any("jsonMetric", jsonMetric))
+	logger.Log().Info("jsonMetric", zap.Any("jsonMetric", jsonMetric))
 	err = h.s.Save(jsonMetric)
 	if err != nil {
 		badRequestResponse(w, r, err)
@@ -161,7 +163,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := h.s.Retrieve(&metrics)
 	if err != nil {
-		logger.Log.Info("error retrieving value", zap.Error(err))
+		logger.Log().Info("error retrieving value", zap.Error(err))
 		notFoundResponse(w, r)
 		return
 	}
@@ -184,16 +186,20 @@ func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	logger.Log.Info("SetAllMetrics", zap.Any("metrics", metrics))
+
+	logger.Log().Info("SetAllMetrics", zap.Any("metrics", metrics))
+
 	if metrics == nil {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
 	err = h.s.SaveAll(metrics)
 	if err != nil {
 		serverErrorResponse(w, r, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
