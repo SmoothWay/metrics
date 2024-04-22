@@ -1,27 +1,15 @@
-# go-musthave-metrics-tpl
+# Description
 
-Шаблон репозитория для трека «Сервер сбора метрик и алертинга».
+This is the project named  "Service of collecting and allerting metrics" from Yandex "Go advanced Developer" course
+[https://practicum.yandex.ru/go-advanced/?from=catalog](link)  
 
-## Начало работы
+There are two services: first one is server which accepts requests and stores metrics in memory, file or database. Second service collects and sends metrics to the server.
 
-1. Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
-2. В корне репозитория выполните команду `go mod init <name>` (где `<name>` — адрес вашего репозитория на GitHub без префикса `https://`) для создания модуля.
+- router: Chi
+- database: Postgres (pgx)
+- logger: zap
+- env parser: caarlos0/env/v6
 
-## Обновление шаблона
-
-Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
-
-```
-git remote add -m main template https://github.com/Yandex-Practicum/go-musthave-metrics-tpl.git
-```
-
-Для обновления кода автотестов выполните команду:
-
-```
-git fetch template && git checkout template/main .github
-```
-
-Затем добавьте полученные изменения в свой репозиторий.
 
 ## Запуск автотестов
 

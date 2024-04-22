@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os/signal"
 	"syscall"
 	"time"
@@ -37,7 +38,6 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-
 	run(ctx, a, *config)
 }
 
@@ -54,7 +54,6 @@ func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
 
 	defer close(jobs)
 	defer close(errs)
-
 	for i := 0; i < cfg.RateLimit; i++ {
 		go a.Worker(ctx, i+1, jobs, errs)
 	}

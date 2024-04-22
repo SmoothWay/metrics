@@ -26,7 +26,6 @@ type Agent struct {
 	Key     string
 	Client  *http.Client
 	Metrics []model.Metrics
-	mu      *sync.Mutex
 }
 
 func (a *Agent) ReportAllMetricsAtOnes(jobs chan<- []model.Metrics) {
@@ -104,7 +103,7 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 	if err != nil {
 		return err
 	}
-
+	logger.Log().Info("sent requset")
 	if a.Key != "" {
 
 		h := hmac.New(sha256.New, []byte(a.Key))

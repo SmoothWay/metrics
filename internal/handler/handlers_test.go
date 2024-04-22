@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/repository/memstorage"
 	"github.com/SmoothWay/metrics/internal/service"
 )
 
 func TestHandler_UpdateHandler(t *testing.T) {
-
+	logger.Init("info")
 	repo := memstorage.New(nil)
 	service := service.New(repo)
 	h := NewHandler(service)
@@ -44,8 +45,7 @@ func TestHandler_UpdateHandler(t *testing.T) {
 	}
 }
 
-func testRequest(t *testing.T, ts *httptest.Server, method,
-	path string) *http.Response {
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) *http.Response {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
 

@@ -5,12 +5,15 @@ import (
 	"math/rand"
 	"reflect"
 	"runtime"
+	"sync"
 
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/shirou/gopsutil/v3/mem"
 	"go.uber.org/zap"
 )
+
+var mu = new(sync.Mutex)
 
 func (a *Agent) CollectPSutilMetrics(ctx context.Context, errs chan<- error) {
 	v, err := mem.VirtualMemory()
@@ -68,15 +71,15 @@ func (a *Agent) CollecMemMetrics() {
 }
 
 func (a *Agent) UpdateGaugeMetric(metricName string, metricValue *float64) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 
 	a.Metrics = append(a.Metrics, model.Metrics{ID: metricName, Mtype: model.MetricTypeGauge, Value: metricValue})
 }
 
 func (a *Agent) UpdateCounterMetric(metricName string, metricDelta *int64) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 
 	a.Metrics = append(a.Metrics, model.Metrics{ID: metricName, Mtype: model.MetricTypeCounter, Delta: metricDelta})
 }

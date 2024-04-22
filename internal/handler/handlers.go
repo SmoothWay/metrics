@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
 	"github.com/SmoothWay/metrics/internal/logger"
@@ -29,6 +30,7 @@ func NewHandler(s *service.Service) *Handler {
 		s: s,
 	}
 }
+
 func Router(h *Handler, hash string) chi.Router {
 	r := chi.NewMux()
 	mw := NewMiddleware(hash)
@@ -38,7 +40,7 @@ func Router(h *Handler, hash string) chi.Router {
 	r.Use(mw.checkHash)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
-
+	r.Mount("/debug", middleware.Profiler())
 	r.Get("/", h.GetAllHanler)
 	r.Get("/ping", h.PingHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetHandler)
@@ -46,7 +48,6 @@ func Router(h *Handler, hash string) chi.Router {
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
 	r.Post("/update/", h.JSONUpdateHandler)
 	r.Post("/updates/", h.SetAllMetrics)
-
 	return r
 }
 
@@ -199,7 +200,6 @@ func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 		serverErrorResponse(w, r, err)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }
 
