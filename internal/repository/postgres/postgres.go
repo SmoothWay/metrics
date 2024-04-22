@@ -6,9 +6,10 @@ import (
 	"log"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
-	"go.uber.org/zap"
 )
 
 var ErrNotFound = errors.New("value not found")

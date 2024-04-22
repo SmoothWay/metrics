@@ -14,9 +14,10 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
-	"go.uber.org/zap"
 )
 
 var counter int64

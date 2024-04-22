@@ -8,10 +8,11 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/SmoothWay/metrics/internal/service"
-	"go.uber.org/zap"
 )
 
 type BackupConfig struct {

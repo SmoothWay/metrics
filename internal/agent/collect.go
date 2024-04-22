@@ -7,10 +7,11 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/SmoothWay/metrics/internal/logger"
-	"github.com/SmoothWay/metrics/internal/model"
 	"github.com/shirou/gopsutil/v3/mem"
 	"go.uber.org/zap"
+
+	"github.com/SmoothWay/metrics/internal/logger"
+	"github.com/SmoothWay/metrics/internal/model"
 )
 
 var mu = new(sync.Mutex)

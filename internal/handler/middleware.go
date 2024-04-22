@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SmoothWay/metrics/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/SmoothWay/metrics/internal/logger"
 )
 
 type responseData struct {
