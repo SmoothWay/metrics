@@ -44,6 +44,7 @@ func Router(h *Handler, hash string) chi.Router {
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
 	r.Mount("/debug", middleware.Profiler())
+
 	r.Get("/", h.GetAllHandler)
 	r.Get("/ping", h.PingHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetHandler)
@@ -51,6 +52,7 @@ func Router(h *Handler, hash string) chi.Router {
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateHandler)
 	r.Post("/update/", h.JSONUpdateHandler)
 	r.Post("/updates/", h.SetAllMetrics)
+
 	return r
 }
 
