@@ -21,8 +21,9 @@ type BackupConfig struct {
 	s        *service.Service
 }
 
+// New
+// Creates new BackupConfig instance with interval, path and service parameters
 func New(interval int64, path string, serv *service.Service) (*BackupConfig, error) {
-
 	return &BackupConfig{
 		Interval: interval,
 		FilePath: path,
@@ -33,6 +34,8 @@ func New(interval int64, path string, serv *service.Service) (*BackupConfig, err
 
 var ErrRestoreFromFile = errors.New("error restoring from file")
 
+// Backup
+// Save metrics into file depending on backupInterval.C
 func (b *BackupConfig) Backup(ctx context.Context) error {
 	backupInterval := time.NewTicker(time.Duration(b.Interval) * time.Second)
 	defer backupInterval.Stop()
@@ -70,6 +73,8 @@ func (b *BackupConfig) backupToFile() error {
 	return nil
 }
 
+// Restore
+// Restore metrics from file and return slice of metrics of type []model.Metrics
 func Restore(FilePath string) (*[]model.Metrics, error) {
 	file, err := os.OpenFile(FilePath, os.O_RDONLY, 0666)
 	if err != nil {

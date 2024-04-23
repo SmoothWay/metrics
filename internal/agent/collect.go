@@ -16,6 +16,8 @@ import (
 
 var mu = new(sync.Mutex)
 
+// CollectPSutilMetrics
+// Collect mem.VirtualMemory's Total, Free, UsedPercent values and send them to updateGaugeMetric method
 func (a *Agent) CollectPSutilMetrics(ctx context.Context, errs chan<- error) {
 	v, err := mem.VirtualMemory()
 	if err != nil {
@@ -32,6 +34,8 @@ func (a *Agent) CollectPSutilMetrics(ctx context.Context, errs chan<- error) {
 	a.UpdateGaugeMetric("CPUutilization1", &usePersentValue)
 }
 
+// CollectMemMetrics
+// Collect memory stats from runtime and send to appropriate update method based on value type
 func (a *Agent) CollecMemMetrics() {
 	var MemStats runtime.MemStats
 
@@ -71,6 +75,8 @@ func (a *Agent) CollecMemMetrics() {
 
 }
 
+// UpdateGaugeMetric
+// Update gauge type metric and append to metrics slice
 func (a *Agent) UpdateGaugeMetric(metricName string, metricValue *float64) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -78,6 +84,8 @@ func (a *Agent) UpdateGaugeMetric(metricName string, metricValue *float64) {
 	a.Metrics = append(a.Metrics, model.Metrics{ID: metricName, Mtype: model.MetricTypeGauge, Value: metricValue})
 }
 
+// UpdateCounterMetric
+// Update counter type metric and append to metrics slice
 func (a *Agent) UpdateCounterMetric(metricName string, metricDelta *int64) {
 	mu.Lock()
 	defer mu.Unlock()

@@ -109,28 +109,23 @@ func (mw *Middleware) decompresser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func (mw *Middleware) checkHash(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if hash := r.Header.Get("HashSHA256"); hash != "" {
 			h := hmac.New(sha256.New, []byte(mw.HashSecretKey))
 
-			// Create a TeeReader to simultaneously read and hash the request body
 			bodyReader := io.TeeReader(r.Body, h)
 
-			// Replace the request body with the TeeReader
 			r.Body = io.NopCloser(bodyReader)
 
-			// Read and discard the remaining request body (if any)
 			io.Copy(io.Discard, r.Body)
 
-			// Reset the request body to the original value
 			r.Body = io.NopCloser(bytes.NewReader([]byte{}))
 
-			// Calculate the hash
 			metricsHash := h.Sum(nil)
 			strHash := hex.EncodeToString(metricsHash)
 
-			// Compare the calculated hash with the provided hash
 			if strHash != hash {
 				badRequestResponse(w, r, errors.New("hash mismatch"))
 				return

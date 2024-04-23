@@ -18,6 +18,7 @@ type PostgreDB struct {
 	db *sql.DB
 }
 
+// New connects to database by passed dsn and creates neccesary table returning PostgreDB type
 func New(dsn string) (*PostgreDB, error) {
 	var counts int
 	var connection *sql.DB
@@ -70,6 +71,7 @@ func openDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+// SetCounterMetric sets value for counter type metric
 func (p *PostgreDB) SetCounterMetric(key string, value int64) error {
 	var name string
 	var prevDelta sql.NullInt64
@@ -111,6 +113,7 @@ func (p *PostgreDB) SetCounterMetric(key string, value int64) error {
 	return nil
 }
 
+// SetGaugeMetric sets value for counter type metric
 func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
 	var name string
 	stmtGetGauge := `SELECT name FROM metrics WHERE name = $1 and type = 'gauge'`
@@ -147,6 +150,7 @@ func (p *PostgreDB) SetGaugeMetric(key string, value float64) error {
 	return nil
 }
 
+// SetAllMetrics inserts slice of metrics into database, if it exists then updates metric
 func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 	stmtGetCounter := `SELECT delta FROM metrics WHERE name = $1 and type = 'counter'`
 
@@ -192,6 +196,7 @@ func (p *PostgreDB) SetAllMetrics(metrics []model.Metrics) error {
 	return nil
 }
 
+// GetCounterMetric retrieve counter metric by name from database
 func (p *PostgreDB) GetCounterMetric(key string) (int64, error) {
 	stmtSelect := `SELECT delta FROM metrics WHERE name = $1 AND type = 'counter'`
 	var counter sql.NullInt64
@@ -208,6 +213,7 @@ func (p *PostgreDB) GetCounterMetric(key string) (int64, error) {
 	return counter.Int64, nil
 }
 
+// GetGaugeMetric retrieve gauge metric by name from database
 func (p *PostgreDB) GetGaugeMetric(key string) (float64, error) {
 	stmtSelect := `SELECT value FROM metrics WHERE name = $1 AND type = 'gauge'`
 	var value sql.NullFloat64
@@ -225,6 +231,7 @@ func (p *PostgreDB) GetGaugeMetric(key string) (float64, error) {
 	return value.Float64, nil
 }
 
+// GetAllMetric retrieve all metrics from database
 func (p *PostgreDB) GetAllMetric() []model.Metrics {
 	selectStmt := `SELECT name, type, delta, value FROM metrics`
 	tx, err := p.db.Begin()
@@ -260,6 +267,7 @@ func (p *PostgreDB) GetAllMetric() []model.Metrics {
 	return metrics
 }
 
+// PingStorage check connection with database
 func (p *PostgreDB) PingStorage() error {
 	err := p.db.Ping()
 	return err

@@ -29,10 +29,14 @@ type Agent struct {
 	Metrics []model.Metrics
 }
 
+// ReportAllMerticsAtOnes
+// Sends all collected metrics in one single slice to jobs channel
 func (a *Agent) ReportAllMetricsAtOnes(jobs chan<- []model.Metrics) {
 	jobs <- a.Metrics
 }
 
+// Worker
+// worker which sends request of single instance of metric to server
 func (a *Agent) Worker(ctx context.Context, id int, jobs <-chan []model.Metrics, errs chan<- error) {
 
 	for metrics := range jobs {
@@ -50,6 +54,8 @@ func (a *Agent) Worker(ctx context.Context, id int, jobs <-chan []model.Metrics,
 
 }
 
+// Retry
+// retry mechanism for sedning request to server again if request failed
 func (a *Agent) Retry(ctx context.Context, numRetry int, jobs chan []model.Metrics, fn func(chan []model.Metrics)) {
 	fn(jobs)
 
@@ -131,6 +137,8 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 	return nil
 }
 
+// ReportMetrics
+// Send slice of metrics to server with compression
 func (a *Agent) ReportMetrics(ctx context.Context) error {
 
 	var wg sync.WaitGroup
