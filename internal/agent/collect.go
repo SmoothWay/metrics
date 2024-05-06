@@ -1,3 +1,4 @@
+// Package agent contains methods for collecting and sending metrics to server
 package agent
 
 import (
@@ -5,7 +6,6 @@ import (
 	"math/rand"
 	"reflect"
 	"runtime"
-	"sync"
 
 	"github.com/shirou/gopsutil/v3/mem"
 	"go.uber.org/zap"
@@ -14,10 +14,7 @@ import (
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
-var mu = new(sync.Mutex)
-
-// CollectPSutilMetrics
-// Collect mem.VirtualMemory's Total, Free, UsedPercent values and send them to updateGaugeMetric method
+// CollectPSutilMetrics - collect mem.VirtualMemory's Total, Free, UsedPercent values and send them to updateGaugeMetric method
 func (a *Agent) CollectPSutilMetrics(ctx context.Context, errs chan<- error) {
 	v, err := mem.VirtualMemory()
 	if err != nil {
@@ -34,9 +31,8 @@ func (a *Agent) CollectPSutilMetrics(ctx context.Context, errs chan<- error) {
 	a.UpdateGaugeMetric("CPUutilization1", &usePersentValue)
 }
 
-// CollectMemMetrics
-// Collect memory stats from runtime and send to appropriate update method based on value type
-func (a *Agent) CollecMemMetrics() {
+// CollectMemMetrics - collect memory stats from runtime and send to appropriate update method based on value type
+func (a *Agent) CollectMemMetrics() {
 	var MemStats runtime.MemStats
 
 	runtime.ReadMemStats(&MemStats)
@@ -75,20 +71,18 @@ func (a *Agent) CollecMemMetrics() {
 
 }
 
-// UpdateGaugeMetric
-// Update gauge type metric and append to metrics slice
+// UpdateGaugeMetric - update gauge type metric and append to metrics slice
 func (a *Agent) UpdateGaugeMetric(metricName string, metricValue *float64) {
-	mu.Lock()
-	defer mu.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	a.Metrics = append(a.Metrics, model.Metrics{ID: metricName, Mtype: model.MetricTypeGauge, Value: metricValue})
 }
 
-// UpdateCounterMetric
-// Update counter type metric and append to metrics slice
+// UpdateCounterMetric - update counter type metric and append to metrics slice
 func (a *Agent) UpdateCounterMetric(metricName string, metricDelta *int64) {
-	mu.Lock()
-	defer mu.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	a.Metrics = append(a.Metrics, model.Metrics{ID: metricName, Mtype: model.MetricTypeCounter, Delta: metricDelta})
 }

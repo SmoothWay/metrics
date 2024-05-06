@@ -61,7 +61,7 @@ func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
 	for {
 		select {
 		case <-poll.C:
-			go a.CollecMemMetrics()
+			go a.CollectMemMetrics()
 			go a.CollectPSutilMetrics(ctx, errs)
 		case <-report.C:
 			go a.ReportAllMetricsAtOnes(jobs)
@@ -70,7 +70,6 @@ func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
 			return
 		case err := <-errs:
 			logger.Log().Error("encountered error", zap.Error(err))
-			return
 		}
 	}
 }
