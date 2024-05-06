@@ -38,10 +38,10 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-	run(ctx, a, *config)
+	run(ctx, &a, *config)
 }
 
-func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
+func run(ctx context.Context, a *agent.Agent, cfg config.AgentConfig) {
 
 	poll := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	report := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
