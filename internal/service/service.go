@@ -20,6 +20,8 @@ type Service struct {
 	repo Repository
 }
 
+// Repository
+// Interface for working with storage
 type Repository interface {
 	GetAllMetric() []model.Metrics
 	GetCounterMetric(string) (int64, error)
@@ -34,6 +36,8 @@ func New(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
+// SaveAll
+// Save slice of metrics into storage
 func (s *Service) SaveAll(metrics []model.Metrics) error {
 	err := s.repo.SetAllMetrics(metrics)
 	if err != nil {
@@ -42,6 +46,8 @@ func (s *Service) SaveAll(metrics []model.Metrics) error {
 	return nil
 }
 
+// Save
+// Save metric into storage
 func (s *Service) Save(jsonMetric model.Metrics) error {
 	switch jsonMetric.Mtype {
 	case model.MetricTypeCounter:
@@ -53,6 +59,8 @@ func (s *Service) Save(jsonMetric model.Metrics) error {
 	}
 }
 
+// Retrieve
+// Get metrics by type and name from storage. Method sets value into passed variable
 func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
 	switch jsonMetric.Mtype {
 	case model.MetricTypeCounter:
@@ -74,6 +82,8 @@ func (s *Service) Retrieve(jsonMetric *model.Metrics) error {
 	return nil
 }
 
+// GetAll
+// Retrieve all metrics from storage
 func (s *Service) GetAll() []model.Metrics {
 	return s.repo.GetAllMetric()
 }

@@ -11,6 +11,7 @@ type Logger struct {
 
 var log *Logger
 
+// Init initialize logger with desired log level
 func Init(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -31,19 +32,23 @@ func Init(level string) error {
 	return nil
 }
 
+// Info wrapper for info level log
 func (l *Logger) Info(title string, msg ...zapcore.Field) {
 
 	l.logger.Info(title, msg...)
 }
 
+// Warn wrapper for Warn level log
 func (l *Logger) Warn(title string, msg ...zapcore.Field) {
 	l.logger.Warn(title, msg...)
 }
 
+// Fatal wrapper for fatal level log
 func (l *Logger) Fatal(title string, err ...zapcore.Field) {
 	l.logger.Fatal(title, err...)
 }
 
+// Error wrapper for error level log
 func (l *Logger) Error(title string, err ...zapcore.Field) {
 	l.logger.Error(title, err...)
 }

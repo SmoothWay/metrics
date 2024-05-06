@@ -5,6 +5,7 @@ const (
 	MetricTypeGauge   = "gauge"
 )
 
+// GaugeMetrics all available default metrics
 var (
 	GaugeMetrics = []string{
 		"Alloc",
@@ -37,13 +38,16 @@ var (
 	}
 )
 
+// Metrics metrics schema for accepting request and response
 type Metrics struct {
-	ID    string   `json:"id"`
-	Mtype string   `json:"type"`
-	Delta *int64   `json:"delta,omitempty"`
-	Value *float64 `json:"value,omitempty"`
+	ID    string   `json:"id"`              // metric name
+	Mtype string   `json:"type"`            // metric type
+	Delta *int64   `json:"delta,omitempty"` // metric value for int type
+	Value *float64 `json:"value,omitempty"` // metric value for floag type
 }
 
+// HTMLTemplate
+// For constructing response for slice of metrics
 const HTMLTemplate = `
 {{range .}}
     {{if eq .Mtype "gauge"}}

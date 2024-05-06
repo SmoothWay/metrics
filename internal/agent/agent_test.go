@@ -11,7 +11,7 @@ import (
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
-func Test_updateMetrics(t *testing.T) {
+func Test_UpdateMetrics(t *testing.T) {
 
 	a := Agent{
 		Metrics: make([]model.Metrics, 0),
@@ -46,7 +46,7 @@ func Test_updateMetrics(t *testing.T) {
 	}
 }
 
-func Test_reportMetrics(t *testing.T) {
+func Test_ReportMetrics(t *testing.T) {
 	client := &http.Client{
 		Timeout: time.Minute,
 	}

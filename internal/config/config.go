@@ -149,7 +149,7 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
 	flag.Int64Var(&config.StoreInvterval, "i", 2, "interval of storing metrics")
-	flag.BoolVar(&config.Restore, "r", true, "store metrics in file")
+	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
 
 	flag.Parse()
 
@@ -158,8 +158,9 @@ func parseServerFlags() *ServerConfig {
 
 func parseAgentFlags() *AgentConfig {
 	config := &AgentConfig{}
-	flag.IntVar(&config.ReportInterval, "r", 10, "report interval")
-	flag.IntVar(&config.PollInterval, "p", 2, "polling interval")
+	flag.IntVar(&config.ReportInterval, "r", 2, "report interval")
+	flag.IntVar(&config.PollInterval, "p", 1, "polling interval")
+	flag.IntVar(&config.RateLimit, "ra", 5, "rate limit num of workers")
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server address")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")

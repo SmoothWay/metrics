@@ -6,13 +6,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/SmoothWay/metrics/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/SmoothWay/metrics/internal/logger"
 )
 
 type responseData struct {
@@ -110,23 +112,22 @@ func (mw *Middleware) decompresser(next http.Handler) http.Handler {
 
 func (mw *Middleware) checkHash(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("HashSHA256") != "" {
-			jsonMetric, err := io.ReadAll(r.Body)
-			if err != nil {
-				badRequestResponse(w, r, err)
-				return
-			}
-
-			r.Body = io.NopCloser(bytes.NewBuffer(jsonMetric))
+		if hash := r.Header.Get("HashSHA256"); hash != "" {
 			h := hmac.New(sha256.New, []byte(mw.HashSecretKey))
 
-			h.Write(jsonMetric)
-			metricsHash := h.Sum(nil)
+			bodyReader := io.TeeReader(r.Body, h)
 
+			r.Body = io.NopCloser(bodyReader)
+
+			io.Copy(io.Discard, r.Body)
+
+			r.Body = io.NopCloser(bytes.NewReader([]byte{}))
+
+			metricsHash := h.Sum(nil)
 			strHash := hex.EncodeToString(metricsHash)
 
-			if strHash != r.Header.Get("HashSHA256") {
-				badRequestResponse(w, r, err)
+			if strHash != hash {
+				badRequestResponse(w, r, errors.New("hash mismatch"))
 				return
 			}
 		}
