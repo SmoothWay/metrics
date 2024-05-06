@@ -17,23 +17,28 @@ import (
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
 
 	config := config.NewAgentConfig()
 
-	var metrics []model.Metrics
-
-	err := logger.Init("info")
+	err := logger.Init(config.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	logger.Log().Info("agent version", zap.String("version", buildVersion), zap.String("build_date", buildDate), zap.String("build_commit", buildCommit))
 	logger.Log().Info("Starting agent...")
 
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
 
+	var metrics []model.Metrics
 	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)

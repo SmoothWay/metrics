@@ -16,12 +16,21 @@ import (
 	"github.com/SmoothWay/metrics/internal/logger"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
 	cfg := config.NewServerConfig()
+
 	err := logger.Init(cfg.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	logger.Log().Info("server version", zap.String("version", buildVersion), zap.String("build_date", buildDate), zap.String("build_commit", buildCommit))
 
 	logger.Log().Info("Starting server on", zap.String("host", cfg.Host))
 

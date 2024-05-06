@@ -36,6 +36,7 @@ func New(metrics *[]model.Metrics) *MemStorage {
 	return &MemStorage{
 		Gauge:   gauge,
 		Counter: counter,
+		mu:      &sync.RWMutex{},
 	}
 }
 
