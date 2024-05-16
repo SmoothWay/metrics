@@ -1,3 +1,4 @@
+// Package memstorage is storage layer which contains memory (Map) storage of metrics
 package memstorage
 
 import (
@@ -18,8 +19,7 @@ type MemStorage struct {
 	mu      *sync.RWMutex
 }
 
-// New
-// Creates new memory storage with gauge and counter are maps. Fill storage with values if non empty metrics passed
+// New - creates new memory storage with gauge and counter are maps. Fill storage with values if non empty metrics passed
 func New(metrics *[]model.Metrics) *MemStorage {
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
@@ -40,8 +40,7 @@ func New(metrics *[]model.Metrics) *MemStorage {
 	}
 }
 
-// SetCounterMetric
-// Set counter metric value by name to memory storage
+// SetCounterMetric - set counter metric value by name to memory storage
 func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
@@ -55,8 +54,7 @@ func (ms *MemStorage) SetCounterMetric(key string, value int64) error {
 	return nil
 }
 
-// SetGaugeMetric
-// Set gauge metric value by name to memory storage
+// SetGaugeMetric - set gauge metric value by name to memory storage
 func (ms *MemStorage) SetGaugeMetric(key string, value float64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
@@ -64,8 +62,7 @@ func (ms *MemStorage) SetGaugeMetric(key string, value float64) error {
 	return nil
 }
 
-// GetCounterMetric
-// Get counter metric value by name from memory storage
+// GetCounterMetric - get counter metric value by name from memory storage
 func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
 	ms.mu.Lock()
 	v, ok := ms.Counter[key]
@@ -76,8 +73,7 @@ func (ms *MemStorage) GetCounterMetric(key string) (int64, error) {
 	return v, nil
 }
 
-// GetGaugeMetric
-// Get gauge metric value by name from memory storage
+// GetGaugeMetric - get gauge metric value by name from memory storage
 func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	ms.mu.Lock()
 	v, ok := ms.Gauge[key]
@@ -88,8 +84,7 @@ func (ms *MemStorage) GetGaugeMetric(key string) (float64, error) {
 	return v, nil
 }
 
-// SetAllMetrics
-// sets slice of metrics passed to memroy storage
+// SetAllMetrics - sets slice of metrics passed to memroy storage
 func (ms *MemStorage) SetAllMetrics(metrics []model.Metrics) error {
 
 	for _, v := range metrics {
@@ -110,8 +105,7 @@ func (ms *MemStorage) SetAllMetrics(metrics []model.Metrics) error {
 	return nil
 }
 
-// GetAllMetric
-// Retrieve all metrics from memory storage
+// GetAllMetric - retrieve all metrics from memory storage
 func (ms *MemStorage) GetAllMetric() []model.Metrics {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()

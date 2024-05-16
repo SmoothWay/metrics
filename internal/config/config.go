@@ -1,3 +1,4 @@
+// Package config configures apps and fills with necessary base values for initializing app
 package config
 
 import (
@@ -27,6 +28,8 @@ type AgentConfig struct {
 }
 
 type ServerConfig struct {
+	B              *backup.BackupConfig
+	H              *handler.Handler
 	Host           string `env:"ADDRESS"`
 	DSN            string `env:"DATABASE_DSN"`
 	LogLevel       string `env:"LOG_LEVEL"`
@@ -34,8 +37,6 @@ type ServerConfig struct {
 	Key            string `env:"KEY"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
 	Restore        bool   `env:"RESTORE"`
-	B              *backup.BackupConfig
-	H              *handler.Handler
 }
 
 func NewServerConfig() *ServerConfig {
@@ -77,7 +78,7 @@ func NewServerConfig() *ServerConfig {
 
 	if config.Restore {
 
-		var err error
+		// var err error
 		metrics, err = backup.Restore(config.StoragePath)
 		if err != nil {
 			if errors.Is(backup.ErrRestoreFromFile, err) {
@@ -148,7 +149,7 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
-	flag.Int64Var(&config.StoreInvterval, "i", 2, "interval of storing metrics")
+	flag.Int64Var(&config.StoreInvterval, "i", 1, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
 
 	flag.Parse()

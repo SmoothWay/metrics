@@ -17,31 +17,36 @@ import (
 	"github.com/SmoothWay/metrics/internal/model"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
 
 	config := config.NewAgentConfig()
 
-	var metrics []model.Metrics
-
-	err := logger.Init("info")
+	err := logger.Init(config.LogLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	logger.Log().Info("agent version", zap.String("version", buildVersion), zap.String("build_date", buildDate), zap.String("build_commit", buildCommit))
 	logger.Log().Info("Starting agent...")
 
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
 
+	var metrics []model.Metrics
 	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-	run(ctx, a, *config)
+	run(ctx, &a, *config)
 }
 
-func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
+func run(ctx context.Context, a *agent.Agent, cfg config.AgentConfig) {
 
 	poll := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	report := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
@@ -61,7 +66,7 @@ func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
 	for {
 		select {
 		case <-poll.C:
-			go a.CollecMemMetrics()
+			go a.CollectMemMetrics()
 			go a.CollectPSutilMetrics(ctx, errs)
 		case <-report.C:
 			go a.ReportAllMetricsAtOnes(jobs)
@@ -70,7 +75,6 @@ func run(ctx context.Context, a agent.Agent, cfg config.AgentConfig) {
 			return
 		case err := <-errs:
 			logger.Log().Error("encountered error", zap.Error(err))
-			return
 		}
 	}
 }

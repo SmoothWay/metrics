@@ -16,10 +16,10 @@ func TestLogger_Info(t *testing.T) {
 		zapcore.AddSync(&buf),
 		zapcore.InfoLevel,
 	))
-	log := &Logger{logger: mockLogger}
+	loggger := &Logger{logger: mockLogger}
 
 	// Call the method being tested
-	log.Info("test message", zap.String("key", "value"))
+	loggger.Info("test message", zap.String("key", "value"))
 
 	// Check the logged message
 	assert.Contains(t, buf.String(), `"level":"info"`)
@@ -33,9 +33,9 @@ func TestLogger_Warn(t *testing.T) {
 		zapcore.AddSync(&buf),
 		zapcore.WarnLevel,
 	))
-	log := &Logger{logger: mockLogger}
+	loggger := &Logger{logger: mockLogger}
 
-	log.Warn("test warning", zap.String("key", "value"))
+	loggger.Warn("test warning", zap.String("key", "value"))
 
 	assert.Contains(t, buf.String(), `"level":"warn"`)
 	assert.Contains(t, buf.String(), `"msg":"test warning"`)
@@ -49,9 +49,9 @@ func TestLogger_Error(t *testing.T) {
 		zapcore.AddSync(&buf),
 		zapcore.ErrorLevel,
 	))
-	log := &Logger{logger: mockLogger}
+	loggger := &Logger{logger: mockLogger}
 
-	log.Error("test error", zap.String("key", "value"))
+	loggger.Error("test error", zap.String("key", "value"))
 
 	assert.Contains(t, buf.String(), `"level":"error"`)
 	assert.Contains(t, buf.String(), `"msg":"test error"`)

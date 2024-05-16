@@ -26,7 +26,7 @@ func Test_UpdateMetrics(t *testing.T) {
 		{name: "alloc", field: "Alloc", wantType: "gauge"},
 		{name: "counter", field: "PollCount", wantType: "counter"},
 	}
-	a.CollecMemMetrics()
+	a.CollectMemMetrics()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			found := false // Flag to track if tt.field is found in metrics

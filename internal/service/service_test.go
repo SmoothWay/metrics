@@ -15,8 +15,8 @@ func TestService_Save(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		args    args
 		wantErr error
+		args    args
 	}{
 		{
 			name: "save gauge",
@@ -91,9 +91,10 @@ func TestService_Retrieve(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    args
+		args args
+
 		wantErr error
+		name    string
 	}{
 		{
 			name: "save gauge",

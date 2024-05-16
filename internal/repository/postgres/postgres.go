@@ -1,3 +1,4 @@
+// Package postgres is storage layer which uses postgres database
 package postgres
 
 import (

@@ -1,3 +1,4 @@
+// Package handler is transport layer package for handling incomming requests to server
 package handler
 
 import (
@@ -31,8 +32,7 @@ func NewHandler(s *service.Service) *Handler {
 	}
 }
 
-// Router
-// Registers all routes and middlewares of server
+// Router Registers all routes and middlewares of server
 // hash - string to check hashed incomming data
 func Router(h *Handler, hash string) chi.Router {
 	r := chi.NewMux()
@@ -56,8 +56,7 @@ func Router(h *Handler, hash string) chi.Router {
 	return r
 }
 
-// PingHandler
-// Can be used to check if service connected to database
+// PingHandler - can be used to check if service connected to database
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	err := h.s.PingStorage()
 	if err != nil {
@@ -68,8 +67,7 @@ func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// JSONUpdateHandler
-// Accepts data in json format and updates metric, then responds with updated values of metric
+// JSONUpdateHandler - accepts data in json format and updates metric, then responds with updated values of metric
 func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	defer r.Body.Close()
@@ -100,8 +98,7 @@ func (h *Handler) JSONUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, jsonMetric)
 }
 
-// JSONGetHandler
-// Retrieves metric by metricType and metricName accepting json request
+// JSONGetHandler - retrieves metric by metricType and metricName accepting json request
 func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 	jsonDec := json.NewDecoder(r.Body)
 	defer r.Body.Close()
@@ -123,8 +120,7 @@ func (h *Handler) JSONGetHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, jsonMetric)
 }
 
-// UpdateHandler
-// Updates metric value getting metricType, metricName and metricValue from URL
+// UpdateHandler - updates metric value getting metricType, metricName and metricValue from URL
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var metrics model.Metrics
 
@@ -168,8 +164,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// GetHandler
-// Gets metric from storage by metricType and metricName, which values from URL
+// GetHandler - gets metric from storage by metricType and metricName, which values from URL
 func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	var metrics model.Metrics
 	var result string
@@ -194,8 +189,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, result)
 }
 
-// SetAllMetrics
-// Accepts slice of metrics in JSON and updates all accepted metrics in storage
+// SetAllMetrics - accepts slice of metrics in JSON and updates all accepted metrics in storage
 func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	var metrics []model.Metrics
 	err := json.NewDecoder(r.Body).Decode(&metrics)
@@ -220,8 +214,7 @@ func (h *Handler) SetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// GetAllHandler
-// Responds with all metrics which are in storage
+// GetAllHandler - responds with all metrics which are in storage
 func (h *Handler) GetAllHandler(w http.ResponseWriter, r *http.Request) {
 	metrics := h.s.GetAll()
 

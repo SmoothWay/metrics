@@ -1,3 +1,4 @@
+// Package logger is logging package wraps uber zap logger
 package logger
 
 import (
