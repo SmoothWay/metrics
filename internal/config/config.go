@@ -22,6 +22,7 @@ type AgentConfig struct {
 	Host           string `env:"ADDRESS"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	Key            string `env:"KEY"`
+	CryptKeyPath   string `env:"CRYPTO_KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
@@ -35,6 +36,7 @@ type ServerConfig struct {
 	LogLevel       string `env:"LOG_LEVEL"`
 	StoragePath    string `env:"STORAGE_PATH"`
 	Key            string `env:"KEY"`
+	CryptKeyPath   string `env:"CRYPTO_KEY"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
 	Restore        bool   `env:"RESTORE"`
 }
@@ -73,12 +75,14 @@ func NewServerConfig() *ServerConfig {
 		config.Restore = flagConfig.Restore
 	}
 
+	if config.CryptKeyPath == "" {
+		config.CryptKeyPath = flagConfig.CryptKeyPath
+	}
+
 	var repo service.Repository
 	var metrics *[]model.Metrics
 
 	if config.Restore {
-
-		// var err error
 		metrics, err = backup.Restore(config.StoragePath)
 		if err != nil {
 			if errors.Is(backup.ErrRestoreFromFile, err) {
@@ -139,6 +143,10 @@ func NewAgentConfig() *AgentConfig {
 		Agentconfig.Key = flagAgentConfig.Key
 	}
 
+	if Agentconfig.CryptKeyPath == "" {
+		Agentconfig.CryptKeyPath = flagAgentConfig.CryptKeyPath
+	}
+
 	return Agentconfig
 }
 
@@ -149,6 +157,7 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.StoragePath, "f", "/tmp/metrics-db.json", "path to file to store metrics")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
+	flag.StringVar(&config.CryptKeyPath, "crypto-key", "./internal/crypt/test-private.pem", "path to crypto-key")
 	flag.Int64Var(&config.StoreInvterval, "i", 1, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
 
@@ -165,6 +174,8 @@ func parseAgentFlags() *AgentConfig {
 	flag.StringVar(&config.Host, "a", "localhost:8080", "server address")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
+	flag.StringVar(&config.CryptKeyPath, "crypto-key", "./internal/crypt/test-public.pem", "path to crypto-key")
+
 	flag.Parse()
 
 	return config

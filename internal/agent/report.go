@@ -16,6 +16,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/SmoothWay/metrics/internal/crypt"
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
 )
@@ -23,6 +24,7 @@ import (
 var counter int64
 
 type Agent struct {
+	PubKey  []byte
 	Host    string
 	Key     string
 	Client  *http.Client
@@ -98,6 +100,13 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 	if err != nil {
 		return err
 	}
+	if len(a.PubKey) > 0 {
+		jsonMetric, err = crypt.Encrypt(jsonMetric, a.PubKey)
+		if err != nil {
+			return err
+		}
+	}
+
 	cJSONMetric, err := compressData(jsonMetric)
 	if err != nil {
 		return err

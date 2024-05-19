@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
@@ -87,10 +88,22 @@ func main() {
 // It iterates through each file in the pass, inspects the AST nodes for function calls, and reports if os.Exit is called in the main function.
 // Returns nil and nil.
 func run(pass *analysis.Pass) (interface{}, error) {
+skipGenerated:
 	for _, file := range pass.Files {
+		for _, cg := range file.Comments {
+			for _, c := range cg.List {
+				// Skip generated files
+				if strings.Contains(c.Text, "DO NOT EDIT") {
+					continue skipGenerated
+				}
+			}
+		}
+		if file.Name.Name != "main" {
+			continue
+		}
 		ast.Inspect(file, func(n ast.Node) bool {
 			if x, ok := n.(*ast.CallExpr); ok {
-				if OSExitChecker(pass, x) {
+				if OSExitChecker(pass, x) && pass.Pkg.Name() == "main" {
 					pass.Reportf(x.Pos(), "should not call os.Exit in main function")
 				}
 			}

@@ -14,6 +14,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/SmoothWay/metrics/internal/crypt"
 	"github.com/SmoothWay/metrics/internal/logger"
 )
 
@@ -55,6 +56,35 @@ type gzipResponseWriter struct {
 
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
+}
+
+func (mw *Middleware) Decrypt(privateKey []byte) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			if len(privateKey) == 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				logger.Log().Error("Decrypt", zap.Error(err))
+				writeJSON(w, http.StatusBadRequest, err.Error())
+				return
+			}
+
+			body, err = crypt.Decrypt(body, privateKey)
+			if err != nil {
+				logger.Log().Error("Decrypt", zap.Error(err))
+				writeJSON(w, http.StatusBadRequest, "Failed to decrypt request data")
+				return
+			}
+
+			r.Body = io.NopCloser(bytes.NewReader(body))
+
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }
 
 func (mw *Middleware) requestLogger(next http.Handler) http.Handler {

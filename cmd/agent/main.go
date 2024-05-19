@@ -13,6 +13,7 @@ import (
 
 	"github.com/SmoothWay/metrics/internal/agent"
 	"github.com/SmoothWay/metrics/internal/config"
+	"github.com/SmoothWay/metrics/internal/crypt"
 	"github.com/SmoothWay/metrics/internal/logger"
 	"github.com/SmoothWay/metrics/internal/model"
 )
@@ -37,9 +38,16 @@ func main() {
 	client := &http.Client{
 		Timeout: time.Minute,
 	}
-
+	var pubKey []byte
 	var metrics []model.Metrics
-	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key}
+	if config.CryptKeyPath != "" {
+		pubKey, err = crypt.ReadKeyFile(config.CryptKeyPath)
+		if err != nil {
+			logger.Log().Error("read public key", zap.String("error", err.Error()))
+			return
+		}
+	}
+	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key, PubKey: pubKey}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
