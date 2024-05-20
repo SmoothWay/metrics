@@ -2,9 +2,11 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"log"
+	"os"
 
 	"github.com/caarlos0/env/v6"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -23,6 +25,7 @@ type AgentConfig struct {
 	LogLevel       string `env:"LOG_LEVEL"`
 	Key            string `env:"KEY"`
 	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Config         string `env:"CONFIG"`
 	RateLimit      int    `env:"RATE_LIMIT"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
@@ -37,6 +40,7 @@ type ServerConfig struct {
 	StoragePath    string `env:"STORAGE_PATH"`
 	Key            string `env:"KEY"`
 	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Config         string `env:"CONFIG"`
 	StoreInvterval int64  `env:"STORE_INTERVAL"`
 	Restore        bool   `env:"RESTORE"`
 }
@@ -46,6 +50,10 @@ func NewServerConfig() *ServerConfig {
 	flagConfig := parseServerFlags()
 	config := &ServerConfig{}
 	env.Parse(config)
+
+	if config.Config == "" {
+		config.Config = flagConfig.Config
+	}
 
 	if config.Host == "" {
 		config.Host = flagConfig.Host
@@ -78,6 +86,8 @@ func NewServerConfig() *ServerConfig {
 	if config.CryptKeyPath == "" {
 		config.CryptKeyPath = flagConfig.CryptKeyPath
 	}
+
+	config = loadServerConfigFile(config.Config, config)
 
 	var repo service.Repository
 	var metrics *[]model.Metrics
@@ -119,6 +129,10 @@ func NewAgentConfig() *AgentConfig {
 	Agentconfig := &AgentConfig{}
 	env.Parse(Agentconfig)
 
+	if Agentconfig.Config == "" {
+		Agentconfig.Config = flagAgentConfig.Config
+	}
+
 	if Agentconfig.RateLimit == 0 {
 		Agentconfig.RateLimit = flagAgentConfig.RateLimit
 	}
@@ -147,7 +161,8 @@ func NewAgentConfig() *AgentConfig {
 		Agentconfig.CryptKeyPath = flagAgentConfig.CryptKeyPath
 	}
 
-	return Agentconfig
+	Config := loadAgentConfigFile(Agentconfig.Config, Agentconfig)
+	return Config
 }
 
 func parseServerFlags() *ServerConfig {
@@ -160,6 +175,7 @@ func parseServerFlags() *ServerConfig {
 	flag.StringVar(&config.CryptKeyPath, "crypto-key", "./internal/crypt/test-private.pem", "path to crypto-key")
 	flag.Int64Var(&config.StoreInvterval, "i", 1, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
+	flag.StringVar(&config.Config, "c", "./config-server.json", "config json file path")
 
 	flag.Parse()
 
@@ -175,8 +191,83 @@ func parseAgentFlags() *AgentConfig {
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
 	flag.StringVar(&config.CryptKeyPath, "crypto-key", "./internal/crypt/test-public.pem", "path to crypto-key")
+	flag.StringVar(&config.Config, "c", "../config-agent.json", "config json file path")
 
 	flag.Parse()
+
+	return config
+}
+
+func loadAgentConfigFile(path string, config *AgentConfig) *AgentConfig {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Println(err)
+		return config
+	}
+	var fileConf AgentConfig
+
+	err = json.Unmarshal(data, &fileConf)
+	if err != nil {
+		log.Println(err)
+		return config
+	}
+
+	if config.Host == "" {
+		config.Host = fileConf.Host
+	}
+
+	if config.PollInterval == 0 {
+		config.PollInterval = fileConf.PollInterval
+	}
+
+	if config.ReportInterval == 0 {
+		config.ReportInterval = fileConf.ReportInterval
+	}
+
+	if config.RateLimit == 0 {
+		config.RateLimit = fileConf.RateLimit
+	}
+
+	if config.CryptKeyPath == "" {
+		config.CryptKeyPath = fileConf.CryptKeyPath
+	}
+
+	return config
+}
+
+func loadServerConfigFile(path string, config *ServerConfig) *ServerConfig {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Println(err)
+		return config
+	}
+	var fileConf ServerConfig
+
+	err = json.Unmarshal(data, &fileConf)
+	if err != nil {
+		log.Println(err)
+		return config
+	}
+
+	if config.Host == "" {
+		config.Host = fileConf.Host
+	}
+
+	if !config.Restore {
+		config.Restore = fileConf.Restore
+	}
+
+	if config.StoreInvterval == 0 {
+		config.StoreInvterval = fileConf.StoreInvterval
+	}
+
+	if config.DSN == "" {
+		config.DSN = fileConf.DSN
+	}
+
+	if config.CryptKeyPath == "" {
+		config.CryptKeyPath = fileConf.CryptKeyPath
+	}
 
 	return config
 }
