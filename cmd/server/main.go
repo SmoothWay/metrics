@@ -35,7 +35,7 @@ func main() {
 
 	logger.Log().Info("Starting server on", zap.String("host", cfg.Host))
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
 	if cfg.StoreInvterval > 0 {

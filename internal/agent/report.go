@@ -33,26 +33,36 @@ type Agent struct {
 }
 
 // ReportAllMetricsAtOnes - sends all collected metrics in one single slice to jobs channel
-func (a *Agent) ReportAllMetricsAtOnes(jobs chan<- []model.Metrics) {
+func (a *Agent) ReportAllMetricsAtOnes(ctx context.Context, jobs chan<- []model.Metrics) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
 	jobs <- a.Metrics
 }
 
 // Worker - worker which sends request of single instance of metric to server
 func (a *Agent) Worker(ctx context.Context, id int, jobs <-chan []model.Metrics, errs chan<- error) {
-
-	for metrics := range jobs {
-		logger.Log().Info("worker", zap.Int("started id", id))
-
-		for _, metric := range metrics {
-
-			err := a.sendRequest(ctx, metric)
-			if err != nil {
-				errs <- err
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Log().Info("worker done", zap.Int("id", id))
+			return
+		case metrics, ok := <-jobs:
+			if !ok {
+				logger.Log().Info("worker done", zap.Int("id", id))
+				return
+			}
+			logger.Log().Info("worker", zap.Int("started id", id))
+			for _, metric := range metrics {
+				err := a.sendRequest(ctx, metric)
+				if err != nil {
+					errs <- err
+				}
 			}
 		}
-		logger.Log().Info("worker", zap.Int("finished id", id))
 	}
-
 }
 
 // Retry - retry mechanism for sedning request to server again if request failed
@@ -96,6 +106,11 @@ func compressData(data []byte) (io.Reader, error) {
 }
 
 func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
 	jsonMetric, err := json.Marshal(m)
 	if err != nil {
 		return err

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -49,7 +50,7 @@ func main() {
 	}
 	a := agent.Agent{Client: client, Metrics: metrics, Host: config.Host, Key: config.Key, PubKey: pubKey}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 	run(ctx, &a, *config)
 }
@@ -64,22 +65,27 @@ func run(ctx context.Context, a *agent.Agent, cfg config.AgentConfig) {
 
 	jobs := make(chan []model.Metrics, cfg.RateLimit)
 	errs := make(chan error)
-
-	defer close(jobs)
-	defer close(errs)
-	for i := 0; i < cfg.RateLimit; i++ {
-		go a.Worker(ctx, i+1, jobs, errs)
+	var wg sync.WaitGroup
+	for i := 0; i < cfg.RateLimit-1; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			a.Worker(ctx, workerID, jobs, errs)
+		}(i + 1)
 	}
 
 	for {
 		select {
 		case <-poll.C:
-			go a.CollectMemMetrics()
-			go a.CollectPSutilMetrics(ctx, errs)
+			a.CollectMemMetrics()
+			a.CollectPSutilMetrics(ctx, errs)
 		case <-report.C:
-			go a.ReportAllMetricsAtOnes(jobs)
+			a.ReportAllMetricsAtOnes(ctx, jobs)
 		case <-ctx.Done():
 			logger.Log().Info("shutting down agent...")
+			close(errs)
+			close(jobs)
+			wg.Wait()
 			return
 		case err := <-errs:
 			logger.Log().Error("encountered error", zap.Error(err))
