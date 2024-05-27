@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/SmoothWay/metrics/internal/config"
+	"github.com/SmoothWay/metrics/internal/crypt"
 	"github.com/SmoothWay/metrics/internal/handler"
 	"github.com/SmoothWay/metrics/internal/logger"
 )
@@ -34,7 +35,7 @@ func main() {
 
 	logger.Log().Info("Starting server on", zap.String("host", cfg.Host))
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGTERM, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
 	if cfg.StoreInvterval > 0 {
@@ -48,7 +49,7 @@ func main() {
 					logger.Log().Info("Context cancelled. Stopping backup routine.")
 					return
 				case <-ticker.C:
-					err := cfg.B.Backup(ctx)
+					err = cfg.B.Backup(ctx)
 					if err != nil {
 						logger.Log().Error("Backup encountered error", zap.Error(err))
 					}
@@ -57,9 +58,17 @@ func main() {
 		}()
 	}
 
+	var privateKey []byte
+	if cfg.CryptKeyPath != "" {
+		privateKey, err = crypt.ReadKeyFile(cfg.CryptKeyPath)
+		if err != nil {
+			logger.Log().Error("readKeyFile", zap.Error(err))
+			return
+		}
+	}
 	server := &http.Server{
 		Addr:    cfg.Host,
-		Handler: handler.Router(cfg.H, cfg.Key),
+		Handler: handler.Router(cfg.H, cfg.Key, privateKey),
 	}
 
 	go func() {
@@ -68,7 +77,13 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done() // Wait for context cancellation
-	logger.Log().Info("Shutting down server...")
-	server.Shutdown(ctx)
+	<-ctx.Done()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Log().Error("Server shutdown failed", zap.Error(err))
+	} else {
+		logger.Log().Info("Server gracefully stopped")
+	}
 }

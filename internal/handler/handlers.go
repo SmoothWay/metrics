@@ -34,12 +34,17 @@ func NewHandler(s *service.Service) *Handler {
 
 // Router Registers all routes and middlewares of server
 // hash - string to check hashed incomming data
-func Router(h *Handler, hash string) chi.Router {
+func Router(h *Handler, hash string, privateKey []byte) chi.Router {
 	r := chi.NewMux()
 	mw := NewMiddleware(hash)
 
 	r.Use(mw.requestLogger)
 	r.Use(mw.decompresser)
+
+	if len(privateKey) > 0 {
+		r.Use(mw.Decrypt(privateKey))
+	}
+
 	r.Use(mw.checkHash)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)

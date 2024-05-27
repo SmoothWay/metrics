@@ -1,0 +1,7 @@
+{
+    "address": "localhost:8080",
+    "poll_interval": 2,
+    "report_interval": 10,
+    "rate_limit": 2,
+    "crypto_key": "./internal/crypt/test-public.pem"
+}
