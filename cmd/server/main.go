@@ -66,9 +66,10 @@ func main() {
 			return
 		}
 	}
+
 	server := &http.Server{
 		Addr:    cfg.Host,
-		Handler: handler.Router(cfg.H, cfg.Key, privateKey),
+		Handler: handler.Router(cfg.H, cfg.Key, cfg.TrustedSubnet, privateKey),
 	}
 
 	go func() {

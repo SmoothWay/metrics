@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -145,8 +147,12 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 		req.Header.Add("HashSHA256", string(hashString))
 	}
 
-	req.Body.Close()
-
+	defer req.Body.Close()
+	ip, err := getIP()
+	if err != nil {
+		logger.Log().Warn("cant get ip", zap.String("error", err.Error()))
+	}
+	req.Header.Set("X-REAL-IP", ip.String())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 
@@ -189,9 +195,13 @@ func (a *Agent) ReportMetrics(ctx context.Context) error {
 				errChan <- err
 				return
 			}
-
-			req.Body.Close()
-
+			defer req.Body.Close()
+			ip, err := getIP()
+			if err != nil {
+				logger.Log().Warn("cant get ip", zap.String("error", err.Error()))
+			}
+			log.Println(ip.String())
+			req.Header.Set("X-REAL-IP", ip.String())
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Content-Encoding", "gzip")
 
@@ -221,4 +231,42 @@ func (a *Agent) ReportMetrics(ctx context.Context) error {
 
 	return nil
 
+}
+
+func getIP() (net.IP, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+
+	var l []net.IP
+	var p []net.IP
+
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok {
+			if ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+				l = append(l, ipnet.IP)
+				continue
+			}
+
+			if ipnet.IP.IsPrivate() && ipnet.IP.To4() != nil {
+				p = append(p, ipnet.IP)
+				continue
+			}
+
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP, nil
+			}
+		}
+	}
+
+	if len(p) > 0 {
+		return p[0], nil
+	}
+
+	if len(l) > 0 {
+		return l[0], nil
+	}
+
+	return nil, nil
 }

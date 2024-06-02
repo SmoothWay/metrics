@@ -21,28 +21,29 @@ import (
 )
 
 type AgentConfig struct {
-	Host           string `env:"ADDRESS"`
-	LogLevel       string `env:"LOG_LEVEL"`
-	Key            string `env:"KEY"`
-	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Host           string `env:"ADDRESS" json:"address"`
+	LogLevel       string `env:"LOG_LEVEL" json:"log_level"`
+	Key            string `env:"KEY" json:"key"`
+	CryptKeyPath   string `env:"CRYPTO_KEY" json:"crypto_key"`
 	Config         string `env:"CONFIG"`
-	RateLimit      int    `env:"RATE_LIMIT"`
-	PollInterval   int    `env:"POLL_INTERVAL"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
+	RateLimit      int    `env:"RATE_LIMIT" json:"rate_limit"`
+	PollInterval   int    `env:"POLL_INTERVAL" json:"poll_interval"`
+	ReportInterval int    `env:"REPORT_INTERVAL" json:"report_interval"`
 }
 
 type ServerConfig struct {
 	B              *backup.BackupConfig
 	H              *handler.Handler
-	Host           string `env:"ADDRESS"`
-	DSN            string `env:"DATABASE_DSN"`
-	LogLevel       string `env:"LOG_LEVEL"`
-	StoragePath    string `env:"STORAGE_PATH"`
-	Key            string `env:"KEY"`
-	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Host           string `env:"ADDRESS" json:"address"`
+	DSN            string `env:"DATABASE_DSN" json:"database_dsn"`
+	LogLevel       string `env:"LOG_LEVEL" json:"log_level"`
+	StoragePath    string `env:"STORAGE_PATH" json:"store_file"`
+	Key            string `env:"KEY" json:"key"`
+	CryptKeyPath   string `env:"CRYPTO_KEY" json:"crypto_key"`
 	Config         string `env:"CONFIG"`
-	StoreInvterval int64  `env:"STORE_INTERVAL"`
-	Restore        bool   `env:"RESTORE"`
+	TrustedSubnet  string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	StoreInvterval int64  `env:"STORE_INTERVAL" json:"store_interval"`
+	Restore        bool   `env:"RESTORE" json:"restore"`
 }
 
 func NewServerConfig() *ServerConfig {
@@ -98,7 +99,7 @@ func NewServerConfig() *ServerConfig {
 			if errors.Is(backup.ErrRestoreFromFile, err) {
 				log.Println("cant restore from json")
 			} else {
-				log.Fatal("unexpected err restoring from json", zap.Error(err))
+				log.Println("unexpected err restoring from json", zap.Error(err))
 			}
 		}
 	}
@@ -176,7 +177,7 @@ func parseServerFlags() *ServerConfig {
 	flag.Int64Var(&config.StoreInvterval, "i", 1, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
 	flag.StringVar(&config.Config, "c", "./config-server.json", "config json file path")
-
+	flag.StringVar(&config.TrustedSubnet, "t", "", "trusted subnet (CIDR)")
 	flag.Parse()
 
 	return config
@@ -267,6 +268,10 @@ func loadServerConfigFile(path string, config *ServerConfig) *ServerConfig {
 
 	if config.CryptKeyPath == "" {
 		config.CryptKeyPath = fileConf.CryptKeyPath
+	}
+
+	if config.TrustedSubnet == "" {
+		config.TrustedSubnet = fileConf.TrustedSubnet
 	}
 
 	return config

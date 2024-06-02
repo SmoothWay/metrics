@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -164,4 +166,40 @@ func (mw *Middleware) checkHash(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (mw *Middleware) TrustedSubnet(subnet *net.IPNet) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			if subnet == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			contentType := r.Header.Get("Content-Type")
+
+			remoteAddr := r.Header.Get("X-REAL-IP")
+
+			if remoteAddr == "" {
+				ra := strings.Split(r.RemoteAddr, ":")
+				if len(ra) >= 2 {
+					remoteAddr = ra[0]
+				}
+			}
+
+			ip := net.ParseIP(remoteAddr)
+
+			if ip == nil || !subnet.Contains(ip) {
+				if strings.Contains(contentType, "application/json") {
+					log.Println(ip)
+					writeJSON(w, http.StatusForbidden, "request from this ip-address was rejected")
+				} else {
+					http.Error(w, "request from this ip-address was rejected", http.StatusForbidden)
+				}
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }

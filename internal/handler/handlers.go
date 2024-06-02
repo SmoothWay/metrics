@@ -34,12 +34,15 @@ func NewHandler(s *service.Service) *Handler {
 
 // Router Registers all routes and middlewares of server
 // hash - string to check hashed incomming data
-func Router(h *Handler, hash string, privateKey []byte) chi.Router {
+func Router(h *Handler, hash, trustedSubnet string, privateKey []byte) chi.Router {
 	r := chi.NewMux()
 	mw := NewMiddleware(hash)
-
+	trustNet := trustedSubnetFromString(trustedSubnet)
+	logger.Log().Info("trusSubnet", zap.Any("net", trustNet))
+	r.Use(middleware.RealIP)
 	r.Use(mw.requestLogger)
 	r.Use(mw.decompresser)
+	r.Use(mw.TrustedSubnet(trustNet))
 
 	if len(privateKey) > 0 {
 		r.Use(mw.Decrypt(privateKey))
@@ -48,6 +51,7 @@ func Router(h *Handler, hash string, privateKey []byte) chi.Router {
 	r.Use(mw.checkHash)
 	r.MethodNotAllowed(methodNotAllowedResponse)
 	r.NotFound(notFoundResponse)
+
 	r.Mount("/debug", middleware.Profiler())
 
 	r.Get("/", h.GetAllHandler)
