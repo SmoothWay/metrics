@@ -134,7 +134,7 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 	if err != nil {
 		return err
 	}
-	logger.Log().Info("sent requset")
+	logger.Log().Info("sent request")
 	if a.Key != "" {
 
 		h := hmac.New(sha256.New, []byte(a.Key))
@@ -148,7 +148,7 @@ func (a *Agent) sendRequest(ctx context.Context, m model.Metrics) error {
 	}
 
 	defer req.Body.Close()
-	ip, err := getIP()
+	ip, err := GetIP()
 	if err != nil {
 		logger.Log().Warn("cant get ip", zap.String("error", err.Error()))
 	}
@@ -196,7 +196,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) error {
 				return
 			}
 			defer req.Body.Close()
-			ip, err := getIP()
+			ip, err := GetIP()
 			if err != nil {
 				logger.Log().Warn("cant get ip", zap.String("error", err.Error()))
 			}
@@ -233,7 +233,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) error {
 
 }
 
-func getIP() (net.IP, error) {
+func GetIP() (net.IP, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil, err

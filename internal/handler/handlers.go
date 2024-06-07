@@ -37,7 +37,7 @@ func NewHandler(s *service.Service) *Handler {
 func Router(h *Handler, hash, trustedSubnet string, privateKey []byte) chi.Router {
 	r := chi.NewMux()
 	mw := NewMiddleware(hash)
-	trustNet := trustedSubnetFromString(trustedSubnet)
+	trustNet := TrustedSubnetFromString(trustedSubnet)
 	logger.Log().Info("trusSubnet", zap.Any("net", trustNet))
 	r.Use(middleware.RealIP)
 	r.Use(mw.requestLogger)

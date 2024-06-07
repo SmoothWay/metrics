@@ -65,7 +65,7 @@ func methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusMethodNotAllowed, env)
 }
 
-func trustedSubnetFromString(subnet string) *net.IPNet {
+func TrustedSubnetFromString(subnet string) *net.IPNet {
 	if subnet == "" {
 		return nil
 	}

@@ -2,6 +2,8 @@
 package model
 
 const (
+	HTTPType          = "http"
+	GRPCType          = "grpc"
 	MetricTypeCounter = "counter"
 	MetricTypeGauge   = "gauge"
 )
