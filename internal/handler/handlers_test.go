@@ -22,7 +22,7 @@ func TestHandler_UpdateHandler(t *testing.T) {
 	service := service.New(repo)
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	tests := []struct {
@@ -55,7 +55,7 @@ func TestHandler_GetHandler(t *testing.T) {
 	service := service.New(repo)
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 	delta := int64(1)
 	value := float64(2)
@@ -103,7 +103,7 @@ func TestHandler_SetAllMetrics(t *testing.T) {
 	service := service.New(repo)
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 	delta := int64(1)
 	value := float64(2)

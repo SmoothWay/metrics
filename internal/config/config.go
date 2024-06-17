@@ -3,50 +3,46 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"log"
 	"os"
 
 	"github.com/caarlos0/env/v6"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"go.uber.org/zap"
 
 	"github.com/SmoothWay/metrics/internal/backup"
 	"github.com/SmoothWay/metrics/internal/handler"
-	"github.com/SmoothWay/metrics/internal/model"
-	"github.com/SmoothWay/metrics/internal/repository/memstorage"
-	"github.com/SmoothWay/metrics/internal/repository/postgres"
-	"github.com/SmoothWay/metrics/internal/service"
 )
 
 type AgentConfig struct {
-	Host           string `env:"ADDRESS"`
-	LogLevel       string `env:"LOG_LEVEL"`
-	Key            string `env:"KEY"`
-	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Host           string `env:"ADDRESS" json:"address"`
+	LogLevel       string `env:"LOG_LEVEL" json:"log_level"`
+	Key            string `env:"KEY" json:"key"`
+	CryptKeyPath   string `env:"CRYPTO_KEY" json:"crypto_key"`
 	Config         string `env:"CONFIG"`
-	RateLimit      int    `env:"RATE_LIMIT"`
-	PollInterval   int    `env:"POLL_INTERVAL"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
+	AgentType      string `env:"AGENT_TYPE" json:"agent_type"`
+	RateLimit      int    `env:"RATE_LIMIT" json:"rate_limit"`
+	PollInterval   int    `env:"POLL_INTERVAL" json:"poll_interval"`
+	ReportInterval int    `env:"REPORT_INTERVAL" json:"report_interval"`
 }
 
 type ServerConfig struct {
 	B              *backup.BackupConfig
 	H              *handler.Handler
-	Host           string `env:"ADDRESS"`
-	DSN            string `env:"DATABASE_DSN"`
-	LogLevel       string `env:"LOG_LEVEL"`
-	StoragePath    string `env:"STORAGE_PATH"`
-	Key            string `env:"KEY"`
-	CryptKeyPath   string `env:"CRYPTO_KEY"`
+	Host           string `env:"ADDRESS" json:"address"`
+	DSN            string `env:"DATABASE_DSN" json:"database_dsn"`
+	LogLevel       string `env:"LOG_LEVEL" json:"log_level"`
+	StoragePath    string `env:"STORAGE_PATH" json:"store_file"`
+	Key            string `env:"KEY" json:"key"`
+	CryptKeyPath   string `env:"CRYPTO_KEY" json:"crypto_key"`
 	Config         string `env:"CONFIG"`
-	StoreInvterval int64  `env:"STORE_INTERVAL"`
-	Restore        bool   `env:"RESTORE"`
+	TrustedSubnet  string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	ServerType     string `env:"SERVER_TYPE" json:"server_type"`
+	StoreInvterval int64  `env:"STORE_INTERVAL" json:"store_interval"`
+	Restore        bool   `env:"RESTORE" json:"restore"`
 }
 
 func NewServerConfig() *ServerConfig {
-	var err error
 	flagConfig := parseServerFlags()
 	config := &ServerConfig{}
 	env.Parse(config)
@@ -87,38 +83,11 @@ func NewServerConfig() *ServerConfig {
 		config.CryptKeyPath = flagConfig.CryptKeyPath
 	}
 
+	if config.ServerType == "" {
+		config.ServerType = flagConfig.ServerType
+	}
+
 	config = loadServerConfigFile(config.Config, config)
-
-	var repo service.Repository
-	var metrics *[]model.Metrics
-
-	if config.Restore {
-		metrics, err = backup.Restore(config.StoragePath)
-		if err != nil {
-			if errors.Is(backup.ErrRestoreFromFile, err) {
-				log.Println("cant restore from json")
-			} else {
-				log.Fatal("unexpected err restoring from json", zap.Error(err))
-			}
-		}
-	}
-
-	if config.DSN != "" {
-		repo, err = postgres.New(config.DSN)
-		if err != nil {
-			log.Fatal("error init postgres:", err)
-		}
-	} else {
-		repo = memstorage.New(metrics)
-	}
-	serv := service.New(repo)
-
-	config.B, err = backup.New(config.StoreInvterval, config.StoragePath, serv)
-	if err != nil {
-		log.Fatal("err creating backupper", zap.Error(err))
-	}
-
-	config.H = handler.NewHandler(serv)
 
 	return config
 }
@@ -161,6 +130,10 @@ func NewAgentConfig() *AgentConfig {
 		Agentconfig.CryptKeyPath = flagAgentConfig.CryptKeyPath
 	}
 
+	if Agentconfig.AgentType == "" {
+		Agentconfig.AgentType = flagAgentConfig.AgentType
+	}
+
 	Config := loadAgentConfigFile(Agentconfig.Config, Agentconfig)
 	return Config
 }
@@ -176,7 +149,8 @@ func parseServerFlags() *ServerConfig {
 	flag.Int64Var(&config.StoreInvterval, "i", 1, "interval of storing metrics")
 	flag.BoolVar(&config.Restore, "r", false, "store metrics in file")
 	flag.StringVar(&config.Config, "c", "./config-server.json", "config json file path")
-
+	flag.StringVar(&config.TrustedSubnet, "t", "", "trusted subnet (CIDR)")
+	flag.StringVar(&config.ServerType, "s", "http", "server type: http or grpc")
 	flag.Parse()
 
 	return config
@@ -191,8 +165,8 @@ func parseAgentFlags() *AgentConfig {
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.Key, "k", "", "secret key for signing data")
 	flag.StringVar(&config.CryptKeyPath, "crypto-key", "./internal/crypt/test-public.pem", "path to crypto-key")
-	flag.StringVar(&config.Config, "c", "../config-agent.json", "config json file path")
-
+	flag.StringVar(&config.Config, "c", "./config-agent.json", "config json file path")
+	flag.StringVar(&config.AgentType, "t", "http", "agent type: http/grpc")
 	flag.Parse()
 
 	return config
@@ -267,6 +241,10 @@ func loadServerConfigFile(path string, config *ServerConfig) *ServerConfig {
 
 	if config.CryptKeyPath == "" {
 		config.CryptKeyPath = fileConf.CryptKeyPath
+	}
+
+	if config.TrustedSubnet == "" {
+		config.TrustedSubnet = fileConf.TrustedSubnet
 	}
 
 	return config

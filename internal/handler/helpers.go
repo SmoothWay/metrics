@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -62,4 +63,16 @@ func methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	env := envelope{"error": message}
 
 	writeJSON(w, http.StatusMethodNotAllowed, env)
+}
+
+func TrustedSubnetFromString(subnet string) *net.IPNet {
+	if subnet == "" {
+		return nil
+	}
+	_, s, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return nil
+	}
+
+	return s
 }

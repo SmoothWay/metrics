@@ -37,7 +37,7 @@ func ExampleHandler_JSONUpdateHandler() {
 	}
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(`%s/update/`, ts.URL), bytes.NewReader(reqBody))
@@ -80,7 +80,7 @@ func ExampleHandler_JSONGetHandler() {
 
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(`%s/value/`, ts.URL), bytes.NewReader(reqBody))
@@ -114,7 +114,7 @@ func ExampleHandler_UpdateHandler() {
 
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(`%s/value/%s/%s/%f`, ts.URL, metric.Mtype, metric.ID, *metric.Value), http.NoBody)
@@ -153,7 +153,7 @@ func ExampleHandler_GetHandler() {
 
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(`%s/value/%s/%s`, ts.URL, metric.Mtype, metric.ID), http.NoBody)
@@ -194,7 +194,7 @@ func ExampleHandler_SetAllMetrics() {
 
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	reqBody, err := json.Marshal(metrics)
@@ -243,7 +243,7 @@ func ExampleHandler_GetAllHandler() {
 	}
 	h := NewHandler(service)
 
-	ts := httptest.NewServer(Router(h, "", []byte("")))
+	ts := httptest.NewServer(Router(h, "", "", []byte("")))
 	defer ts.Close()
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(`%s/`, ts.URL), http.NoBody)
